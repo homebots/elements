@@ -5,16 +5,16 @@ import resolve from '@rollup/plugin-node-resolve';
 export default {
   input: 'src/index.ts',
   external: [
-    'zone.js',
-    'reflect-metadata'
+    'zone.js/dist/zone.js',
+    'reflect-metadata',
   ],
   output: {
     dir: '.',
     format: 'es'
   },
   plugins: [
-    resolve(),
     typescript({ module: 'CommonJS' }),
+    resolve(),
     commonjs({ extensions: ['.js', '.ts'] }),
   ]
 };

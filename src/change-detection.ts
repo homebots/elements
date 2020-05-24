@@ -1,5 +1,5 @@
-import isEqual from 'lodash.isequal';
-import clone from 'lodash.clone';
+import * as isEqual from 'lodash.isequal';
+import * as clone from 'lodash.clone';
 import { Injector } from './injector';
 import { ZoneRef } from './zone';
 

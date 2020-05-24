@@ -55,7 +55,7 @@ export interface InputOptions {
   useEquals: boolean;
 }
 
-export interface InputWatcher {
+interface InputWatcher {
   property: string;
   options?: InputOptions;
 }
