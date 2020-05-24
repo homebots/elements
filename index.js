@@ -8071,6 +8071,11 @@ Object.defineProperty(exports, "ChangeDetector", { enumerable: true, get: functi
 Object.defineProperty(exports, "ChangeDetectorSymbol", { enumerable: true, get: function () { return changeDetection.ChangeDetectorSymbol; } });
 
 Object.defineProperty(exports, "Injector", { enumerable: true, get: function () { return injector.Injector; } });
+Object.defineProperty(exports, "Inject", { enumerable: true, get: function () { return injector.Inject; } });
+Object.defineProperty(exports, "Injectable", { enumerable: true, get: function () { return injector.Injectable; } });
+Object.defineProperty(exports, "InjectorSymbol", { enumerable: true, get: function () { return injector.InjectorSymbol; } });
+Object.defineProperty(exports, "Type", { enumerable: true, get: function () { return injector.Type; } });
+Object.defineProperty(exports, "getInjectorFrom", { enumerable: true, get: function () { return injector.getInjectorFrom; } });
 
 Object.defineProperty(exports, "DomEventEmitter", { enumerable: true, get: function () { return events.DomEventEmitter; } });
 Object.defineProperty(exports, "EventEmitter", { enumerable: true, get: function () { return events.EventEmitter; } });
@@ -8090,13 +8095,18 @@ var src_2 = src.ZoneSymbol;
 var src_3 = src.ChangeDetector;
 var src_4 = src.ChangeDetectorSymbol;
 var src_5 = src.Injector;
-var src_6 = src.DomEventEmitter;
-var src_7 = src.EventEmitter;
-var src_8 = src.Output;
-var src_9 = src.Component;
-var src_10 = src.Input;
-var src_11 = src.TemplateRef;
-var src_12 = src.bootstrap;
+var src_6 = src.Inject;
+var src_7 = src.Injectable;
+var src_8 = src.InjectorSymbol;
+var src_9 = src.Type;
+var src_10 = src.getInjectorFrom;
+var src_11 = src.DomEventEmitter;
+var src_12 = src.EventEmitter;
+var src_13 = src.Output;
+var src_14 = src.Component;
+var src_15 = src.Input;
+var src_16 = src.TemplateRef;
+var src_17 = src.bootstrap;
 
 export default index;
-export { src_3 as ChangeDetector, src_4 as ChangeDetectorSymbol, src_9 as Component, src_6 as DomEventEmitter, src_7 as EventEmitter, src_5 as Injector, src_10 as Input, src_8 as Output, src_11 as TemplateRef, src_1 as ZoneRef, src_2 as ZoneSymbol, src_12 as bootstrap };
+export { src_3 as ChangeDetector, src_4 as ChangeDetectorSymbol, src_14 as Component, src_11 as DomEventEmitter, src_12 as EventEmitter, src_6 as Inject, src_7 as Injectable, src_5 as Injector, src_8 as InjectorSymbol, src_15 as Input, src_13 as Output, src_16 as TemplateRef, src_9 as Type, src_1 as ZoneRef, src_2 as ZoneSymbol, src_17 as bootstrap, src_10 as getInjectorFrom };
