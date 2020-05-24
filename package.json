@@ -1,6 +1,6 @@
 {
   "name": "@homebots/elements",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Microframework to write modern web apps using latest ES/HTML/CSS stuff",
   "main": "./index.js",
   "typings": "./dist/index.d.ts",
@@ -15,7 +15,7 @@
     "@rollup/plugin-commonjs": "^12.0.0",
     "@rollup/plugin-node-resolve": "^8.0.0",
     "@rollup/plugin-typescript": "^4.1.2",
-    "@types/node": "^14.0.4",
+    "@types/node": "14.0.4",
     "rollup": "^2.10.9",
     "typescript": "^3.9.3"
   },
