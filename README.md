@@ -20,32 +20,19 @@ Here's an example (also available under `/example`). To run this I used `parcel 
 
 ```html
 <!-- index.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your app</title>
-  <script src="https://unpkg.com/zone.js"></script>
-  <script src="https://unpkg.com/reflect-metadata"></script>
-  <script src="https://unpkg.com/@homebots/elements"></script>
-  <script src="./index.ts"></script>
-  <link rel="stylesheet" href="/index.scss" />
-</head>
-
-<body>
-  <app-root></app-root>
-</body>
-
-</html>
+<script src="https://unpkg.com/zone.js"></script>
+<script src="https://unpkg.com/reflect-metadata"></script>
+<script src="https://unpkg.com/@homebots/elements"></script>
+<script src="./index.ts"></script>
+<link rel="stylesheet" href="/index.scss" />
+<!-- ... -->
+<app-root></app-root>
 ```
 
 ```typescript
 // index.ts
 import { bootstrap } from '@homebots/elements';
-
 export { AppComponent } from './app.component';
-
 bootstrap();
 ```
 
@@ -67,7 +54,7 @@ export class AppComponent extends HTMLElement {
   appService: AppService;
 
   updateName() {
-    this.name = this.appService.getName();
+    this.name = this.appService.getRandomName();
   }
 }
 ```
@@ -77,10 +64,12 @@ export class AppComponent extends HTMLElement {
 
 import { Injectable } from '@homebots/elements';
 
-@Injectable()
-export class AppService {
-  getName() {
-    return 'Paul';
+@Injectable({
+  providedBy: 'root'
+})
+export class NameGenerationService {
+  getRandomName() {
+    return 'Le Random Smith #' + Math.round(Math.random() * 999);
   }
 }
 ```
@@ -91,8 +80,12 @@ export class AppService {
 export default `
   <div>
     <h2>App root</h2>
+    <label for="name">Your name:</label>
+
+    <input id="name" [value]="this.name" (input)="this.name = $event.target.value" />
     <p>Hello, <span [innerText]="this.name"></span></p>
-    <button (click)="this.updateName()"></button>
+
+    <button (click)="this.updateName()">change to random name</button>
   </div>
 `;
 

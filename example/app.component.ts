@@ -1,5 +1,5 @@
-import { Component } from '@homebots/elements';
-import { AppService } from './app.service';
+import { Component, Inject } from '@homebots/elements';
+import { NameGenerationService } from './app.service';
 import appTemplate from './app.template';
 
 @Component({
@@ -9,10 +9,9 @@ import appTemplate from './app.template';
 export class AppComponent extends HTMLElement {
   name = 'John';
 
-  @Inject()
-  appService: AppService;
+  @Inject() appService: NameGenerationService;
 
   updateName() {
-    this.name = this.appService.getName();
+    this.name = this.appService.getRandomName();
   }
 }

@@ -1,8 +1,10 @@
 import { Injectable } from '@homebots/elements';
 
-@Injectable()
-export class AppService {
-  getName() {
-    return 'Paul';
+@Injectable({
+  providedBy: 'root'
+})
+export class NameGenerationService {
+  getRandomName() {
+    return 'Le Random Smith #' + Math.round(Math.random() * 999);
   }
 }
