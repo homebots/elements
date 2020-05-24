@@ -16,7 +16,7 @@ Unpkg makes it super easy.
 
 I tried [Parcel](https://parceljs.org) to bundle an example and it's dead easy to start an app.
 
-Here's an example (also available under `/example`)
+Here's an example (also available under `/example`). To run this I used `parcel path/to/index.html`.
 
 ```html
 <!-- index.html -->
