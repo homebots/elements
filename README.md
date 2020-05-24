@@ -5,24 +5,25 @@ This is a microframework that tries to use the latest API's from HTML, Javascrip
 What you get out-of-box:
 
 - Dependency injection
-- Custom elements
-- Lifecycle hooks
-- Change detection
+- [Custom elements](https://developers.google.com/web/fundamentals/web-components/customelements)
+- Lifecycle hooks (onChange, OnInit, OnDestroy, OnBeforeCheck)
+- Change detection (via [Zone.js](https://www.npmjs.com/package/zone.js))
 
 # Usage
 
 You need to import [Zone.js](https://www.npmjs.com/package/zone.js) and [Reflect API](https://www.npmjs.com/package/reflect-metadata) in your project.
-Unpkg makes it super easy.
+Unpkg makes life much super easy, amirite?
 
-I tried [Parcel](https://parceljs.org) to bundle an example and it's dead easy to start an app.
+I also tried [Parcel](https://parceljs.org) to bundle the example and it's dead easy to start an app. Really cool stuff!
 
-Here's an example (also available under `/example`). To run this I used `parcel path/to/index.html`.
+Here's an example (also available at `https://github.com/homebots/elements-example`).
+
+To run this I used the command `parcel path/to/index.html`.
 
 ```html
 <!-- index.html -->
 <script src="https://unpkg.com/zone.js"></script>
 <script src="https://unpkg.com/reflect-metadata"></script>
-<script src="https://unpkg.com/@homebots/elements"></script>
 <script src="./index.ts"></script>
 <link rel="stylesheet" href="/index.scss" />
 <!-- ... -->
@@ -94,6 +95,13 @@ export default `
 # TODO
 
 Lots of things can be improved here.
+To name a few:
+
+```
+- Implement a syntax for conditionals and loops
+- Add some error handling to ease debugging
+- Create an almighty TODO app for this
+```
 
 I put this together in a few days as a braindump, so there's no test coverage yet. Sorry :(
 
