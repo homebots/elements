@@ -1,0 +1,14 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "es5",
+    "lib": ["ESNext", "DOM"],
+    "typeRoots": ["node_modules/@types"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node"]
+  },
+  "files": ["src/index.ts"],
+  "include": ["src/**/*.ts"]
+}
