@@ -20,7 +20,7 @@ Most of the syntax is shamelessly copied from Angular and Alpine.js:
 <!-- bind a property -->
 <div [innerText]="this.text"></div>
 
-<!-- bind a property -->
+<!-- bind to events -->
 <div (click)="this.onClick()"></div>
 ```
 
