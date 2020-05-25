@@ -40,7 +40,7 @@ export class AppService {
 # Usage
 
 You need to import [Zone.js](https://www.npmjs.com/package/zone.js) and [Reflect API](https://www.npmjs.com/package/reflect-metadata) in your project.
-Unpkg makes life much super easy, amirite?
+Unpkg makes life so easy, amirite?
 
 I also tried [Parcel](https://parceljs.org) to bundle the example and it's dead easy to start an app. Really cool stuff!
 
@@ -131,7 +131,7 @@ To name a few:
 - Create an almighty TODO app for this
 ```
 
-I put this together in a few days as a braindump, so there's no test coverage yet. Sorry :(
+I put this together in a few days as a braindump so there's no test coverage yet. Sorry :(
 
 I think this is not the most performant thing on Earth too, but I'm not trying to beat React or Angular.
 

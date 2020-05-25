@@ -262,7 +262,7 @@ function compileElement(element: HTMLElement, root: HTMLElement) {
         break;
 
       case '@':
-        attachWatcher(cd, element, realAttribute, value, true);
+        attachWatcher(cd, element, attribute.slice(1), value, true);
         break;
 
       default:
