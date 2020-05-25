@@ -9,6 +9,34 @@ What you get out-of-box:
 - Lifecycle hooks (onChange, OnInit, OnDestroy, OnBeforeCheck)
 - Change detection (via [Zone.js](https://www.npmjs.com/package/zone.js))
 
+# Syntax Examples
+
+Most of the syntax is shamelessly copied from Angular and Alpine.js:
+
+```html
+<!-- bind an attribute -->
+<div @class="this.dynamicClasses"></div>
+
+<!-- bind a property -->
+<div [innerText]="this.text"></div>
+
+<!-- bind a property -->
+<div (click)="this.onClick()"></div>
+```
+
+```typescript
+// injectable class
+@Injectable({ providedBy: 'root' })
+export class Userervice {}
+
+export class AppService {
+  // injected service
+  @Inject()
+  userService: UserService;
+}
+
+```
+
 # Usage
 
 You need to import [Zone.js](https://www.npmjs.com/package/zone.js) and [Reflect API](https://www.npmjs.com/package/reflect-metadata) in your project.
