@@ -8006,7 +8006,7 @@ function compileElement(element, root) {
                 attachWatcher(cd, element, realAttribute, value);
                 break;
             case '@':
-                attachWatcher(cd, element, realAttribute, value, true);
+                attachWatcher(cd, element, attribute.slice(1), value, true);
                 break;
             default:
                 setAttribute(element, attribute, value);
