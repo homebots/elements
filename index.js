@@ -21,19 +21,6 @@ function commonjsRequire () {
 	throw new Error('Dynamic requires are not currently supported by @rollup/plugin-commonjs');
 }
 
-var zone = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ZoneRef = exports.ZoneSymbol = void 0;
-
-exports.ZoneSymbol = Symbol('ZoneRef');
-exports.ZoneRef = exports.ZoneSymbol;
-
-});
-
-unwrapExports(zone);
-var zone_1 = zone.ZoneRef;
-var zone_2 = zone.ZoneSymbol;
-
 var lodash_isequal = createCommonjsModule(function (module, exports) {
 /**
  * Lodash (Custom Build) <https://lodash.com/>
@@ -3644,33 +3631,47 @@ function stubFalse() {
 module.exports = clone;
 });
 
+var zone = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ZoneRef = exports.ZoneSymbol = void 0;
+
+exports.ZoneSymbol = Symbol('ZoneRef');
+exports.ZoneRef = exports.ZoneSymbol;
+
+});
+
+unwrapExports(zone);
+var zone_1 = zone.ZoneRef;
+var zone_2 = zone.ZoneSymbol;
+
 var changeDetection = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ChangeDetector = exports.ChangeDetectorSymbol = void 0;
+exports.ZoneChangeDetector = exports.ChangeDetectorRef = exports.ChangeDetectorSymbol = void 0;
 
 
 
 var uid = 0;
 exports.ChangeDetectorSymbol = Symbol('change-detector');
-var ChangeDetector = /** @class */ (function () {
-    function ChangeDetector(component, parent, injector) {
+exports.ChangeDetectorRef = exports.ChangeDetectorSymbol;
+var ZoneChangeDetector = /** @class */ (function () {
+    function ZoneChangeDetector(component, parent, injector) {
         if (component === void 0) { component = null; }
         if (parent === void 0) { parent = null; }
         if (injector === void 0) { injector = null; }
         this.component = component;
         this.parent = parent;
         this.injector = injector;
+        this.children = new Map();
         this.name = "change-detector::check " + ++uid;
         this.properties = { changeDetector: this };
         this.checked = false;
         this.watchers = [];
-        this.children = new Map();
         this.timer = 0;
         if (this.parent) {
             this.parent.children.set(this.component, this);
         }
     }
-    Object.defineProperty(ChangeDetector.prototype, "zone", {
+    Object.defineProperty(ZoneChangeDetector.prototype, "zone", {
         get: function () {
             if (!this._zone) {
                 this._zone = this.injector.get(zone.ZoneRef);
@@ -3680,33 +3681,29 @@ var ChangeDetector = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
-    ChangeDetector.prototype.beforeCheck = function () { };
-    ChangeDetector.prototype.afterCheck = function () { };
-    ChangeDetector.prototype.unregister = function () {
+    ZoneChangeDetector.prototype.beforeCheck = function () {
+        this.component.onBeforeCheck();
+    };
+    ZoneChangeDetector.prototype.afterCheck = function () { };
+    ZoneChangeDetector.prototype.unregister = function () {
         this.parent.children.delete(this.component);
     };
-    ChangeDetector.prototype.watch = function (expression, callback, useEquals) {
+    ZoneChangeDetector.prototype.run = function (callback, applyThis, applyArgs, source) {
+        return this.zone.runGuarded(callback, applyThis, applyArgs, source);
+    };
+    ZoneChangeDetector.prototype.watch = function (expression, callback, useEquals) {
         if (useEquals === void 0) { useEquals = false; }
-        expression = this.ensureFunction(expression);
         this.watchers.push({
-            name: '',
             expression: expression,
             callback: callback,
             useEquals: useEquals,
         });
     };
-    ChangeDetector.prototype.add = function (watcher) {
-        watcher.expression = this.ensureFunction(watcher.expression || watcher.expressionString);
-        this.watchers.push(watcher);
-    };
-    ChangeDetector.prototype.markForCheck = function () {
+    ZoneChangeDetector.prototype.markForCheck = function () {
         this.checked = false;
         this.children.forEach(function (cd) { return cd.markForCheck(); });
     };
-    ChangeDetector.prototype.run = function (callback, applyThis, applyArgs, source) {
-        return this.zone.runGuarded(callback, applyThis, applyArgs, source);
-    };
-    ChangeDetector.prototype.check = function () {
+    ZoneChangeDetector.prototype.check = function () {
         var _this = this;
         if (this.checked) {
             return;
@@ -3727,13 +3724,7 @@ var ChangeDetector = /** @class */ (function () {
         this.afterCheck();
         this.checked = true;
     };
-    ChangeDetector.prototype.ensureFunction = function (expression) {
-        if (typeof expression === 'string') {
-            expression = Function('return ' + expression.trim());
-        }
-        return expression;
-    };
-    ChangeDetector.prototype.scheduleCheck = function () {
+    ZoneChangeDetector.prototype.scheduleCheck = function () {
         var _this = this;
         if (this.timer) {
             clearTimeout(this.timer);
@@ -3743,42 +3734,42 @@ var ChangeDetector = /** @class */ (function () {
             _this.timer = 0;
         }, 1);
     };
-    ChangeDetector.prototype.checkChildren = function () {
+    ZoneChangeDetector.prototype.checkChildren = function () {
         this.children.forEach(function (cd) { return cd.check(); });
         this.checked = true;
     };
-    ChangeDetector.prototype.markZoneForCheck = function (zone) {
+    ZoneChangeDetector.prototype.markZoneForCheck = function (zone) {
         var targetArea = zone.get('changeDetector');
         targetArea.markForCheck();
     };
-    // --- ZoneSpec ---
-    ChangeDetector.prototype.onInvoke = function (delegate, _, target, callback, applyThis, applyArgs, source) {
+    ZoneChangeDetector.prototype.onInvoke = function (delegate, _, target, callback, applyThis, applyArgs, source) {
         var output = delegate.invoke(target, callback, applyThis, applyArgs);
         this.markZoneForCheck(target);
         this.scheduleCheck();
         return output;
     };
-    ChangeDetector.prototype.onInvokeTask = function (delegate, _, target, task, applyThis, applyArgs) {
+    ZoneChangeDetector.prototype.onInvokeTask = function (delegate, _, target, task, applyThis, applyArgs) {
         var output = delegate.invokeTask(target, task, applyThis, applyArgs);
         this.markZoneForCheck(target);
         this.scheduleCheck();
         return output;
     };
-    ChangeDetector.prototype.onScheduleTask = function (delegate, _, target, task) {
+    ZoneChangeDetector.prototype.onScheduleTask = function (delegate, _, target, task) {
         var scheduledTask = delegate.scheduleTask(target, task);
         this.markZoneForCheck(target);
         this.scheduleCheck();
         return scheduledTask;
     };
-    return ChangeDetector;
+    return ZoneChangeDetector;
 }());
-exports.ChangeDetector = ChangeDetector;
+exports.ZoneChangeDetector = ZoneChangeDetector;
 
 });
 
 unwrapExports(changeDetection);
-var changeDetection_1 = changeDetection.ChangeDetector;
-var changeDetection_2 = changeDetection.ChangeDetectorSymbol;
+var changeDetection_1 = changeDetection.ZoneChangeDetector;
+var changeDetection_2 = changeDetection.ChangeDetectorRef;
+var changeDetection_3 = changeDetection.ChangeDetectorSymbol;
 
 var injector = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -3890,6 +3881,85 @@ var injector_4 = injector.Injector;
 var injector_5 = injector.InjectorSymbol;
 var injector_6 = injector.InjectableMetadataKey;
 var injector_7 = injector.Type;
+
+var application = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Application = exports.ApplicationRef = void 0;
+
+
+
+exports.ApplicationRef = Symbol('ApplicationRef');
+var Application = /** @class */ (function () {
+    function Application(rootNode) {
+        this.name = 'root-node';
+        var injector$1 = rootNode[injector.InjectorSymbol] = new injector.Injector();
+        var changeDetector = new changeDetection.ZoneChangeDetector(null, null, injector$1);
+        var zone$1 = Zone.root.fork(changeDetector);
+        this.changeDetector = changeDetector;
+        injector$1.register({ type: exports.ApplicationRef, useValue: this });
+        injector$1.register({ type: changeDetection.ChangeDetectorRef, useValue: this.changeDetector });
+        injector$1.register({ type: zone.ZoneRef, useValue: zone$1 });
+    }
+    Application.prototype.tick = function () {
+        this.changeDetector.check();
+    };
+    return Application;
+}());
+exports.Application = Application;
+
+});
+
+unwrapExports(application);
+var application_1 = application.Application;
+var application_2 = application.ApplicationRef;
+
+var bootstrap_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.domReady = exports.bootstrap = exports.BOOTSTRAP = void 0;
+
+var Bootstrap = /** @class */ (function () {
+    function Bootstrap() {
+        var _this = this;
+        this.promise = new Promise(function (resolve) { return _this.resolve = resolve; });
+    }
+    Bootstrap.prototype.tick = function (app) {
+        this.resolve(app);
+    };
+    Bootstrap.prototype.whenReady = function (fn) {
+        this.promise = this.promise.then(fn);
+    };
+    return Bootstrap;
+}());
+exports.BOOTSTRAP = new Bootstrap();
+function bootstrap() {
+    domReady().then(function () {
+        var app = new application.Application(document.body);
+        exports.BOOTSTRAP.whenReady(function () { return app.tick(); });
+        exports.BOOTSTRAP.tick(app);
+        return app;
+    }).catch(console.log);
+}
+exports.bootstrap = bootstrap;
+// Thanks @stimulus:
+// https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
+function domReady() {
+    return new Promise(function (resolve) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', resolve);
+        }
+        else {
+            resolve();
+        }
+    });
+}
+exports.domReady = domReady;
+
+});
+
+unwrapExports(bootstrap_1);
+var bootstrap_2 = bootstrap_1.domReady;
+var bootstrap_3 = bootstrap_1.bootstrap;
+var bootstrap_4 = bootstrap_1.BOOTSTRAP;
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -7676,7 +7746,7 @@ var _esm5 = /*#__PURE__*/Object.freeze({
 
 var events = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EventEmitter = exports.Output = exports.DomEventEmitter = void 0;
+exports.attachEvent = exports.EventEmitter = exports.Output = exports.DomEventEmitter = void 0;
 
 var DomEventEmitter = /** @class */ (function () {
     function DomEventEmitter(element, event) {
@@ -7690,12 +7760,6 @@ var DomEventEmitter = /** @class */ (function () {
             bubbles: true,
         });
         element.dispatchEvent(customEvent);
-    };
-    DomEventEmitter.prototype.addEventListener = function (callback) {
-        this.element.addEventListener(this.event, callback);
-    };
-    DomEventEmitter.prototype.removeEventListener = function (callback) {
-        this.element.removeEventListener(this.event, callback);
     };
     DomEventEmitter.prototype.emit = function (data) {
         DomEventEmitter.emitEvent(this.element, this.event, data);
@@ -7717,8 +7781,8 @@ var ClassEventEmitter = /** @class */ (function () {
 }());
 function Output(eventName) {
     return function (target, property) {
-        // event names are always lower case!
-        eventName = eventName || property.toLowerCase();
+        // NOTE! event names are always lower case!
+        eventName = (eventName || property).toLowerCase();
         Object.defineProperty(target, property, {
             get: function () {
                 return this[eventName] || (this[eventName] = new DomEventEmitter(this, eventName));
@@ -7728,269 +7792,37 @@ function Output(eventName) {
 }
 exports.Output = Output;
 exports.EventEmitter = ClassEventEmitter;
+function attachEvent(cd, element, eventName, expression) {
+    var useCapture = eventName === 'focus' || eventName === 'blur';
+    var fn = function (event) { return cd.run(function () {
+        cd.markForCheck();
+        expression.apply(element, [event]);
+    }); };
+    element.addEventListener(eventName, fn, { capture: useCapture });
+}
+exports.attachEvent = attachEvent;
 
 });
 
 unwrapExports(events);
-var events_1 = events.EventEmitter;
-var events_2 = events.Output;
-var events_3 = events.DomEventEmitter;
+var events_1 = events.attachEvent;
+var events_2 = events.EventEmitter;
+var events_3 = events.Output;
+var events_4 = events.DomEventEmitter;
 
-var ifContainer = createCommonjsModule(function (module, exports) {
+var element = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IfContainer = void 0;
+exports.findElementProperty = exports.setAttribute = exports.compileElement = void 0;
 
 
-var IfContainer = /** @class */ (function () {
-    function IfContainer() {
+function compileElement(elementOrShadowRoot, root) {
+    if (elementOrShadowRoot.children.length) {
+        Array.from(elementOrShadowRoot.children).forEach(function (e) { return compileElement(e, root); });
     }
-    IfContainer = tslib_es6.__decorate([
-        injector.Injectable(),
-        tslib_es6.__metadata("design:paramtypes", [])
-    ], IfContainer);
-    return IfContainer;
-}());
-exports.IfContainer = IfContainer;
-
-});
-
-unwrapExports(ifContainer);
-var ifContainer_1 = ifContainer.IfContainer;
-
-var application = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Application = exports.ApplicationRef = void 0;
-
-
-
-
-exports.ApplicationRef = Symbol('ApplicationRef');
-var Application = /** @class */ (function () {
-    function Application(rootNode) {
-        this.name = 'root-node';
-        var rootProviders = [ifContainer.IfContainer];
-        var injector$1 = rootNode[injector.InjectorSymbol] = new injector.Injector(null, rootProviders);
-        var changeDetector = new changeDetection.ChangeDetector(null, null, injector$1);
-        this.changeDetector = rootNode[changeDetection.ChangeDetectorSymbol] = changeDetector;
-        rootNode[zone.ZoneSymbol] = Zone.root.fork(this.changeDetector);
-        injector$1.register({ type: exports.ApplicationRef, useValue: this });
-        injector$1.register({ type: changeDetection.ChangeDetector, useValue: this.changeDetector });
-        injector$1.register({ type: zone.ZoneRef, useValue: rootNode[zone.ZoneSymbol] });
-    }
-    Application.prototype.tick = function () {
-        this.changeDetector.check();
-    };
-    return Application;
-}());
-exports.Application = Application;
-
-});
-
-unwrapExports(application);
-var application_1 = application.Application;
-var application_2 = application.ApplicationRef;
-
-var bootstrap_1 = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.domReady = exports.bootstrap = exports.BOOTSTRAP = void 0;
-
-var Bootstrap = /** @class */ (function () {
-    function Bootstrap() {
-        var _this = this;
-        this.promise = new Promise(function (resolve) { return _this.resolve = resolve; });
-    }
-    Bootstrap.prototype.tick = function () {
-        this.resolve();
-    };
-    Bootstrap.prototype.whenStable = function (fn) {
-        this.promise = this.promise.then(fn);
-    };
-    return Bootstrap;
-}());
-exports.BOOTSTRAP = new Bootstrap();
-function bootstrap() {
-    domReady().then(function () {
-        var app = new application.Application(document.body);
-        exports.BOOTSTRAP.tick();
-        exports.BOOTSTRAP.whenStable(function () { return app.tick(); });
-    });
-}
-exports.bootstrap = bootstrap;
-// Thanks @stimulus:
-// https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
-function domReady() {
-    return new Promise(function (resolve) {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', resolve);
-        }
-        else {
-            resolve();
-        }
-    });
-}
-exports.domReady = domReady;
-
-});
-
-unwrapExports(bootstrap_1);
-var bootstrap_2 = bootstrap_1.domReady;
-var bootstrap_3 = bootstrap_1.bootstrap;
-var bootstrap_4 = bootstrap_1.BOOTSTRAP;
-
-var component = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Component = exports.TemplateRef = exports.Input = void 0;
-
-
-
-
-
-var INPUTS_META = 'inputs';
-function Input(options) {
-    return function (target, property) {
-        var inputs = Reflect.getMetadata(INPUTS_META, target) || [];
-        inputs.push({
-            property: property,
-            options: options,
-        });
-        Reflect.defineMetadata(INPUTS_META, inputs, target);
-    };
-}
-exports.Input = Input;
-exports.TemplateRef = Symbol('TemplateRef');
-function Component(options) {
-    return function (ComponentClass) {
-        var CustomElement = /** @class */ (function (_super) {
-            tslib_es6.__extends(CustomElement, _super);
-            function CustomElement() {
-                var _this = _super !== null && _super.apply(this, arguments) || this;
-                _this.property = true;
-                return _this;
-            }
-            CustomElement.prototype.connectedCallback = function () {
-                attachMetadata(this, options);
-                var template = options.template;
-                var hasShadowDom = template && (template.includes('<slot') || options.useShadowDom || options.shadowDomOptions);
-                var injector$1 = this[injector.InjectorSymbol];
-                if (hasShadowDom) {
-                    injector$1.register({
-                        type: exports.TemplateRef,
-                        useValue: attachShadowDom(this, options),
-                    });
-                }
-                else if (template) {
-                    this.innerHTML = template;
-                    injector$1.register({
-                        type: exports.TemplateRef,
-                        useValue: this,
-                    });
-                }
-                addHostAttributes(this, options.hostAttributes);
-                if (hasShadowDom) {
-                    compileShadowDom(this.shadowRoot, this);
-                }
-                else {
-                    compileElement(this, this);
-                }
-                watchInputs(this);
-                this[changeDetection.ChangeDetectorSymbol].beforeCheck = this.onBeforeCheck;
-                this.onInit();
-            };
-            CustomElement.prototype.disconnectedCallback = function () {
-                this[changeDetection.ChangeDetectorSymbol].unregister();
-                this.onDestroy();
-            };
-            return CustomElement;
-        }(ComponentClass));
-        Object.defineProperty(CustomElement, '__component__', options);
-        addLifeCycleHooks(CustomElement);
-        bootstrap_1.BOOTSTRAP.whenStable(function () { return customElements.define(options.tag, CustomElement, options.extensionOptions); });
-    };
-}
-exports.Component = Component;
-var noop = function () { };
-var lifeCycleHooks = ['onInit', 'onDestroy', 'onChanges', 'onBeforeCheck'];
-function addLifeCycleHooks(target) {
-    lifeCycleHooks.forEach(function (hook) {
-        if (!target.prototype[hook]) {
-            target.prototype[hook] = noop;
-        }
-    });
-}
-function watchInputs(customElement) {
-    var inputs = Reflect.getMetadata(INPUTS_META, customElement) || [];
-    if (!inputs.length)
+    // skip shadowRoot
+    if ('getAttributeNames' in elementOrShadowRoot === false)
         return;
-    var changes = {};
-    var firstTime = true;
-    var hasChanges = false;
-    var changeDetector = customElement[changeDetection.ChangeDetectorSymbol];
-    inputs.forEach(function (input) {
-        changeDetector.add(tslib_es6.__assign(tslib_es6.__assign({}, input.options), { name: input.property, expression: function () { return customElement[input.property]; }, callback: function (value, lastValue) {
-                hasChanges = true;
-                changes[input.property] = {
-                    value: value,
-                    lastValue: lastValue,
-                    firstTime: firstTime,
-                };
-            } }));
-    });
-    changeDetector.afterCheck = function () {
-        if (!hasChanges)
-            return;
-        customElement.onChanges(changes);
-        firstTime = false;
-        changes = {};
-        hasChanges = false;
-    };
-}
-function attachMetadata(component, options) {
-    var parentComponent = component;
-    var customElement = component;
-    // tslint:disable-next-line: no-conditional-assignment
-    while (parentComponent && (parentComponent = (parentComponent.parentNode || parentComponent.host))) {
-        if (parentComponent[changeDetection.ChangeDetectorSymbol]) {
-            var injector$1 = new injector.Injector(parentComponent[injector.InjectorSymbol], options.providers);
-            var changeDetector = new changeDetection.ChangeDetector(component, parentComponent[changeDetection.ChangeDetectorSymbol], injector$1);
-            var zone$1 = Zone.current.fork(changeDetector);
-            injector$1.register({
-                type: zone.ZoneRef,
-                useValue: zone$1,
-            });
-            injector$1.register({
-                type: changeDetection.ChangeDetector,
-                useValue: changeDetector,
-            });
-            customElement[injector.InjectorSymbol] = injector$1;
-            customElement[changeDetection.ChangeDetectorSymbol] = changeDetector;
-            customElement[zone.ZoneSymbol] = zone$1;
-            return;
-        }
-    }
-}
-function attachShadowDom(target, options) {
-    var templateRef = document.createElement('template');
-    var shadowRoot = target.attachShadow(options.shadowDomOptions || { mode: 'open' });
-    templateRef.innerHTML = options.template;
-    shadowRoot.appendChild(templateRef.content.cloneNode(true));
-    return templateRef;
-}
-function addHostAttributes(target, attributes) {
-    if (!attributes)
-        return;
-    Object.keys(attributes).forEach(function (attribute) {
-        target.setAttribute(attribute, attributes[attribute]);
-    });
-}
-function compileShadowDom(shadowRoot, root) {
-    if (shadowRoot.children.length) {
-        Array.from(shadowRoot.children).forEach(function (element) { return compileElement(element, root); });
-    }
-}
-function compileElement(element, root) {
-    if (element.children.length) {
-        Array.from(element.children).forEach(function (e) { return compileElement(e, root); });
-    }
+    var element = elementOrShadowRoot;
     var attributes = element.getAttributeNames();
     var cd = root[changeDetection.ChangeDetectorSymbol];
     attributes.forEach(function (attribute) {
@@ -8000,7 +7832,7 @@ function compileElement(element, root) {
         switch (firstCharacter) {
             case '(':
                 var fn = Function('$event', value).bind(root);
-                attachEvent(cd, element, realAttribute, fn);
+                events.attachEvent(cd, element, realAttribute, fn);
                 break;
             case '[':
                 attachWatcher(cd, element, realAttribute, value);
@@ -8013,28 +7845,20 @@ function compileElement(element, root) {
         }
     });
 }
+exports.compileElement = compileElement;
 function setAttribute(element, attribute, value) {
     element.setAttribute(attribute, value);
 }
-function attachEvent(cd, element, eventName, expression) {
-    var useCapture = eventName === 'focus' || eventName === 'blur';
-    var fn = function (event) { return cd.run(function () {
-        cd.markForCheck();
-        expression.apply(element, [event]);
-    }); };
-    element.addEventListener(eventName, fn, { capture: useCapture });
-}
-function attachWatcher(cd, element, property, expression, isAttribute) {
+exports.setAttribute = setAttribute;
+function attachWatcher(changeDetector, element, property, expression, isAttribute) {
     if (isAttribute === void 0) { isAttribute = false; }
     var transformedProperty = !isAttribute && findElementProperty(element, property);
-    cd.add({
-        expression: expression,
-        callback: function (value) {
-            if (isAttribute) {
-                return setAttribute(element, property, value);
-            }
-            element[transformedProperty] = value;
-        },
+    var expressionFn = Function('context', "return " + expression);
+    changeDetector.watch(expressionFn, function (value) {
+        if (isAttribute) {
+            return setAttribute(element, property, value);
+        }
+        element[transformedProperty] = value;
     });
 }
 var knownProperties = {};
@@ -8053,60 +7877,256 @@ function findElementProperty(element, attributeName) {
     }
     return attributeName;
 }
+exports.findElementProperty = findElementProperty;
+
+});
+
+unwrapExports(element);
+var element_1 = element.findElementProperty;
+var element_2 = element.setAttribute;
+var element_3 = element.compileElement;
+
+var inputs = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Input = exports.watchInputs = exports.INPUTS_METADATA = void 0;
+
+exports.INPUTS_METADATA = 'inputs';
+function watchInputs(customElement) {
+    var inputs = Reflect.getMetadata(exports.INPUTS_METADATA, customElement) || [];
+    if (!inputs.length)
+        return;
+    var changes = {};
+    var firstTime = true;
+    var hasChanges = false;
+    var changeDetector = customElement[changeDetection.ChangeDetectorSymbol];
+    inputs.forEach(function (input) {
+        var _a;
+        changeDetector.watch(function () { return customElement[input.property]; }, function (value, lastValue) {
+            hasChanges = true;
+            changes[input.property] = {
+                value: value,
+                lastValue: lastValue,
+                firstTime: firstTime,
+            };
+        }, (_a = input.options) === null || _a === void 0 ? void 0 : _a.useEquals);
+    });
+    changeDetector.afterCheck = function () {
+        if (!hasChanges)
+            return;
+        customElement.onChanges(changes);
+        firstTime = false;
+        changes = {};
+        hasChanges = false;
+    };
+}
+exports.watchInputs = watchInputs;
+function Input(options) {
+    return function (target, property) {
+        var inputs = Reflect.getMetadata(exports.INPUTS_METADATA, target) || [];
+        inputs.push({
+            property: property,
+            options: options,
+        });
+        Reflect.defineMetadata(exports.INPUTS_METADATA, inputs, target);
+    };
+}
+exports.Input = Input;
+
+});
+
+unwrapExports(inputs);
+var inputs_1 = inputs.Input;
+var inputs_2 = inputs.watchInputs;
+var inputs_3 = inputs.INPUTS_METADATA;
+
+var utils = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createTemplateFromHtml = void 0;
+function createTemplateFromHtml(html) {
+    var templateRef = document.createElement('template');
+    templateRef.innerHTML = html;
+    return templateRef;
+}
+exports.createTemplateFromHtml = createTemplateFromHtml;
+
+});
+
+unwrapExports(utils);
+var utils_1 = utils.createTemplateFromHtml;
+
+var component = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.Component = exports.TemplateRef = void 0;
+
+
+
+
+
+
+
+
+exports.TemplateRef = Symbol('TemplateRef');
+function Component(options) {
+    return function (ComponentClass) {
+        var CustomElement = /** @class */ (function (_super) {
+            tslib_es6.__extends(CustomElement, _super);
+            function CustomElement() {
+                return _super !== null && _super.apply(this, arguments) || this;
+            }
+            CustomElement.prototype.connectedCallback = function () {
+                try {
+                    createComponentInjector(this, options);
+                    attachShadowDom(this, options);
+                    addHostAttributes(this, options);
+                    element.compileElement(this.shadowRoot || this, this);
+                    inputs.watchInputs(this);
+                    this.onInit();
+                }
+                catch (error) {
+                    console.log(error);
+                    throw error;
+                }
+            };
+            CustomElement.prototype.disconnectedCallback = function () {
+                this[changeDetection.ChangeDetectorSymbol].unregister();
+                this.onDestroy();
+            };
+            return CustomElement;
+        }(ComponentClass));
+        addLifeCycleHooks(CustomElement);
+        bootstrap_1.BOOTSTRAP.whenReady(function () { return customElements.define(options.tag, CustomElement, options.extensionOptions); });
+    };
+}
+exports.Component = Component;
+var noop = function () { };
+var lifeCycleHooks = ['onInit', 'onDestroy', 'onChanges', 'onBeforeCheck'];
+function addLifeCycleHooks(target) {
+    lifeCycleHooks.forEach(function (hook) {
+        if (!target.prototype[hook]) {
+            target.prototype[hook] = noop;
+        }
+    });
+}
+function findParentComponent(component) {
+    var parentComponent = component;
+    while (parentComponent && (parentComponent = (parentComponent.parentNode || parentComponent.host))) {
+        if (parentComponent[injector.InjectorSymbol]) {
+            return parentComponent;
+        }
+    }
+    return null;
+}
+exports.findParentComponent = findParentComponent;
+function createComponentInjector(component, options) {
+    var parentComponent = findParentComponent(component);
+    var parentInjector = parentComponent ? parentComponent[injector.InjectorSymbol] : null;
+    var parentChangeDetector = (parentInjector === null || parentInjector === void 0 ? void 0 : parentInjector.get(changeDetection.ChangeDetectorRef)) || null;
+    var parentZone = ((parentInjector === null || parentInjector === void 0 ? void 0 : parentInjector.get(zone.ZoneRef)) || Zone.root);
+    var injector$1 = new injector.Injector(parentInjector, options.providers);
+    var changeDetector = new changeDetection.ZoneChangeDetector(component, parentChangeDetector, injector$1);
+    var zone$1 = parentZone.fork(changeDetector);
+    var template = utils.createTemplateFromHtml(options.template || '');
+    injector$1.register({ type: exports.TemplateRef, useValue: template });
+    injector$1.register({ type: zone.ZoneRef, useValue: zone$1 });
+    injector$1.register({ type: changeDetection.ChangeDetectorRef, useValue: changeDetector });
+    component[changeDetection.ChangeDetectorSymbol] = changeDetector;
+    component[injector.InjectorSymbol] = injector$1;
+}
+exports.createComponentInjector = createComponentInjector;
+function attachShadowDom(target, options) {
+    var template = options.template;
+    var useShadowDom = template || options.useShadowDom || options.shadowDomOptions;
+    if (useShadowDom) {
+        var templateRef = injector.getInjectorFrom(target).get(exports.TemplateRef);
+        var shadowRoot = target.attachShadow(options.shadowDomOptions || { mode: 'open' });
+        shadowRoot.appendChild(templateRef.content.cloneNode(true));
+    }
+}
+exports.attachShadowDom = attachShadowDom;
+function addHostAttributes(target, options) {
+    var hostAttributes = options.hostAttributes;
+    if (!hostAttributes)
+        return;
+    Object.keys(hostAttributes).forEach(function (attribute) {
+        target.setAttribute(attribute, hostAttributes[attribute]);
+    });
+}
+exports.addHostAttributes = addHostAttributes;
 
 });
 
 unwrapExports(component);
-var component_1 = component.Component;
-var component_2 = component.TemplateRef;
-var component_3 = component.Input;
+var component_1 = component.addHostAttributes;
+var component_2 = component.attachShadowDom;
+var component_3 = component.createComponentInjector;
+var component_4 = component.findParentComponent;
+var component_5 = component.Component;
+var component_6 = component.TemplateRef;
 
 var src = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 
-Object.defineProperty(exports, "ZoneRef", { enumerable: true, get: function () { return zone.ZoneRef; } });
-Object.defineProperty(exports, "ZoneSymbol", { enumerable: true, get: function () { return zone.ZoneSymbol; } });
+Object.defineProperty(exports, "bootstrap", { enumerable: true, get: function () { return bootstrap_1.bootstrap; } });
+Object.defineProperty(exports, "BOOTSTRAP", { enumerable: true, get: function () { return bootstrap_1.BOOTSTRAP; } });
+Object.defineProperty(exports, "domReady", { enumerable: true, get: function () { return bootstrap_1.domReady; } });
 
-Object.defineProperty(exports, "ChangeDetector", { enumerable: true, get: function () { return changeDetection.ChangeDetector; } });
 Object.defineProperty(exports, "ChangeDetectorSymbol", { enumerable: true, get: function () { return changeDetection.ChangeDetectorSymbol; } });
+Object.defineProperty(exports, "ChangeDetectorRef", { enumerable: true, get: function () { return changeDetection.ChangeDetectorRef; } });
+Object.defineProperty(exports, "ZoneChangeDetector", { enumerable: true, get: function () { return changeDetection.ZoneChangeDetector; } });
 
-Object.defineProperty(exports, "Injector", { enumerable: true, get: function () { return injector.Injector; } });
-Object.defineProperty(exports, "Inject", { enumerable: true, get: function () { return injector.Inject; } });
-Object.defineProperty(exports, "Injectable", { enumerable: true, get: function () { return injector.Injectable; } });
-Object.defineProperty(exports, "InjectorSymbol", { enumerable: true, get: function () { return injector.InjectorSymbol; } });
-Object.defineProperty(exports, "Type", { enumerable: true, get: function () { return injector.Type; } });
-Object.defineProperty(exports, "getInjectorFrom", { enumerable: true, get: function () { return injector.getInjectorFrom; } });
+Object.defineProperty(exports, "Component", { enumerable: true, get: function () { return component.Component; } });
+Object.defineProperty(exports, "TemplateRef", { enumerable: true, get: function () { return component.TemplateRef; } });
+Object.defineProperty(exports, "createComponentInjector", { enumerable: true, get: function () { return component.createComponentInjector; } });
+Object.defineProperty(exports, "findParentComponent", { enumerable: true, get: function () { return component.findParentComponent; } });
+Object.defineProperty(exports, "addHostAttributes", { enumerable: true, get: function () { return component.addHostAttributes; } });
+Object.defineProperty(exports, "attachShadowDom", { enumerable: true, get: function () { return component.attachShadowDom; } });
 
 Object.defineProperty(exports, "DomEventEmitter", { enumerable: true, get: function () { return events.DomEventEmitter; } });
 Object.defineProperty(exports, "EventEmitter", { enumerable: true, get: function () { return events.EventEmitter; } });
 Object.defineProperty(exports, "Output", { enumerable: true, get: function () { return events.Output; } });
 
-Object.defineProperty(exports, "Component", { enumerable: true, get: function () { return component.Component; } });
-Object.defineProperty(exports, "Input", { enumerable: true, get: function () { return component.Input; } });
-Object.defineProperty(exports, "TemplateRef", { enumerable: true, get: function () { return component.TemplateRef; } });
+Object.defineProperty(exports, "getInjectorFrom", { enumerable: true, get: function () { return injector.getInjectorFrom; } });
+Object.defineProperty(exports, "Inject", { enumerable: true, get: function () { return injector.Inject; } });
+Object.defineProperty(exports, "Injectable", { enumerable: true, get: function () { return injector.Injectable; } });
+Object.defineProperty(exports, "Injector", { enumerable: true, get: function () { return injector.Injector; } });
+Object.defineProperty(exports, "InjectorSymbol", { enumerable: true, get: function () { return injector.InjectorSymbol; } });
+Object.defineProperty(exports, "Type", { enumerable: true, get: function () { return injector.Type; } });
 
-Object.defineProperty(exports, "bootstrap", { enumerable: true, get: function () { return bootstrap_1.bootstrap; } });
+Object.defineProperty(exports, "Input", { enumerable: true, get: function () { return inputs.Input; } });
+
+Object.defineProperty(exports, "createTemplateFromHtml", { enumerable: true, get: function () { return utils.createTemplateFromHtml; } });
+
+Object.defineProperty(exports, "ZoneRef", { enumerable: true, get: function () { return zone.ZoneRef; } });
+Object.defineProperty(exports, "ZoneSymbol", { enumerable: true, get: function () { return zone.ZoneSymbol; } });
 
 });
 
 var index = unwrapExports(src);
-var src_1 = src.ZoneRef;
-var src_2 = src.ZoneSymbol;
-var src_3 = src.ChangeDetector;
+var src_1 = src.bootstrap;
+var src_2 = src.BOOTSTRAP;
+var src_3 = src.domReady;
 var src_4 = src.ChangeDetectorSymbol;
-var src_5 = src.Injector;
-var src_6 = src.Inject;
-var src_7 = src.Injectable;
-var src_8 = src.InjectorSymbol;
-var src_9 = src.Type;
-var src_10 = src.getInjectorFrom;
-var src_11 = src.DomEventEmitter;
-var src_12 = src.EventEmitter;
-var src_13 = src.Output;
-var src_14 = src.Component;
-var src_15 = src.Input;
-var src_16 = src.TemplateRef;
-var src_17 = src.bootstrap;
+var src_5 = src.ChangeDetectorRef;
+var src_6 = src.ZoneChangeDetector;
+var src_7 = src.Component;
+var src_8 = src.TemplateRef;
+var src_9 = src.createComponentInjector;
+var src_10 = src.findParentComponent;
+var src_11 = src.addHostAttributes;
+var src_12 = src.attachShadowDom;
+var src_13 = src.DomEventEmitter;
+var src_14 = src.EventEmitter;
+var src_15 = src.Output;
+var src_16 = src.getInjectorFrom;
+var src_17 = src.Inject;
+var src_18 = src.Injectable;
+var src_19 = src.Injector;
+var src_20 = src.InjectorSymbol;
+var src_21 = src.Type;
+var src_22 = src.Input;
+var src_23 = src.createTemplateFromHtml;
+var src_24 = src.ZoneRef;
+var src_25 = src.ZoneSymbol;
 
 export default index;
-export { src_3 as ChangeDetector, src_4 as ChangeDetectorSymbol, src_14 as Component, src_11 as DomEventEmitter, src_12 as EventEmitter, src_6 as Inject, src_7 as Injectable, src_5 as Injector, src_8 as InjectorSymbol, src_15 as Input, src_13 as Output, src_16 as TemplateRef, src_9 as Type, src_1 as ZoneRef, src_2 as ZoneSymbol, src_17 as bootstrap, src_10 as getInjectorFrom };
+export { src_2 as BOOTSTRAP, src_5 as ChangeDetectorRef, src_4 as ChangeDetectorSymbol, src_7 as Component, src_13 as DomEventEmitter, src_14 as EventEmitter, src_17 as Inject, src_18 as Injectable, src_19 as Injector, src_20 as InjectorSymbol, src_22 as Input, src_15 as Output, src_8 as TemplateRef, src_21 as Type, src_6 as ZoneChangeDetector, src_24 as ZoneRef, src_25 as ZoneSymbol, src_11 as addHostAttributes, src_12 as attachShadowDom, src_1 as bootstrap, src_9 as createComponentInjector, src_23 as createTemplateFromHtml, src_3 as domReady, src_10 as findParentComponent, src_16 as getInjectorFrom };

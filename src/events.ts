@@ -1,10 +1,10 @@
 import { Subject } from 'rxjs';
+import { ChangeDetector } from './change-detection';
 
 export type EventCallback<T = any> = (event: T) => void;
 
 export interface EventEmitter<T> {
   emit(data: T): void;
-  addEventListener(callback: EventCallback<T>): void;
 }
 
 export class DomEventEmitter<T> implements EventEmitter<T> {
@@ -21,14 +21,6 @@ export class DomEventEmitter<T> implements EventEmitter<T> {
     private element: HTMLElement,
     private event: string,
   ) {}
-
-  addEventListener(callback: EventCallback) {
-    this.element.addEventListener(this.event, callback);
-  }
-
-  removeEventListener(callback: EventCallback) {
-    this.element.removeEventListener(this.event, callback);
-  }
 
   emit(data: T) {
     DomEventEmitter.emitEvent(this.element, this.event, data);
@@ -50,8 +42,8 @@ class ClassEventEmitter<T> implements EventEmitter<T> {
 
 export function Output(eventName?: string) {
   return function (target: any, property: string) {
-    // event names are always lower case!
-    eventName = eventName || property.toLowerCase();
+    // NOTE! event names are always lower case!
+    eventName = (eventName || property).toLowerCase();
 
     Object.defineProperty(target, property, {
       get() {
@@ -62,3 +54,13 @@ export function Output(eventName?: string) {
 }
 
 export const EventEmitter = ClassEventEmitter;
+
+export function attachEvent(cd: ChangeDetector, element: HTMLElement, eventName: string, expression: VoidFunction) {
+  const useCapture = eventName === 'focus' || eventName === 'blur';
+  const fn = (event: Event) => cd.run(() => {
+    cd.markForCheck();
+    expression.apply(element, [event]);
+  });
+
+  element.addEventListener(eventName, fn, { capture: useCapture });
+}

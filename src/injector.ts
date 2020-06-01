@@ -120,6 +120,6 @@ export function Injectable(options?: InjectableOptions) {
   };
 }
 
-export function getInjectorFrom(target: Type): Injector {
+export function getInjectorFrom(target: Type | HTMLElement): Injector {
   return target[InjectorSymbol];
 }

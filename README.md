@@ -62,6 +62,7 @@ To run this I used the command `parcel path/to/index.html`.
 // index.ts
 import { bootstrap } from '@homebots/elements';
 export { AppComponent } from './app.component';
+
 bootstrap();
 ```
 

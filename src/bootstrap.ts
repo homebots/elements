@@ -9,11 +9,11 @@ class Bootstrap {
     this.promise = new Promise((resolve) => this.resolve = resolve);
   }
 
-  tick() {
-    this.resolve();
+  tick(app: Application) {
+    this.resolve(app);
   }
 
-  whenStable(fn: () => any) {
+  whenReady(fn: () => any) {
     this.promise = this.promise.then(fn);
   }
 }
@@ -23,9 +23,10 @@ export const BOOTSTRAP = new Bootstrap();
 export function bootstrap() {
   domReady().then(function() {
     const app = new Application(document.body);
-    BOOTSTRAP.tick();
-    BOOTSTRAP.whenStable(() => app.tick());
-  });
+    BOOTSTRAP.whenReady(() => app.tick());
+    BOOTSTRAP.tick(app);
+    return app;
+  }).catch(console.log);
 }
 
 // Thanks @stimulus:
@@ -39,3 +40,4 @@ export function domReady() {
     }
   });
 }
+

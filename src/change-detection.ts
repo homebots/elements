@@ -1,14 +1,14 @@
 import * as isEqual from 'lodash.isequal';
 import * as clone from 'lodash.clone';
-import { Injector } from './injector';
+import { Injector, InjectionToken } from './injector';
 import { ZoneRef } from './zone';
+import { AnyFunction } from './utils';
 
 export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
 export type Expression<T> = () => T;
 
 export interface Watcher {
-  name?: string;
-  expression: () => any;
+  expression: AnyFunction;
   callback?: ChangeCallback<unknown>;
   lastValue?: any;
   useEquals?: boolean;
@@ -25,8 +25,23 @@ interface ZoneProperties {
 let uid = 0;
 
 export const ChangeDetectorSymbol = Symbol('change-detector');
+export const ChangeDetectorRef: InjectionToken<ChangeDetector> = ChangeDetectorSymbol;
 
-export class ChangeDetector implements ZoneSpec {
+export interface ChangeDetector {
+  children: Map<HTMLElement, ChangeDetector>;
+
+  check(): void;
+  markForCheck(): void;
+  unregister(): void;
+  beforeCheck(): void;
+  afterCheck(): void;
+  watch<T>(expression: string | Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
+  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
+}
+
+export class ZoneChangeDetector implements ZoneSpec, ChangeDetector {
+  children = new Map<HTMLElement, ChangeDetector>();
+
   constructor(
     private component: HTMLElement = null,
     private parent: ChangeDetector = null,
@@ -50,40 +65,34 @@ export class ChangeDetector implements ZoneSpec {
 
   private checked = false;
   private watchers: Watcher[] = [];
-  protected children = new Map<HTMLElement, ChangeDetector>();
   private _zone: Zone;
   private timer = 0;
 
-  beforeCheck() {}
+  beforeCheck() {
+    (this.component as any).onBeforeCheck();
+  }
+
   afterCheck() {}
 
   unregister() {
     this.parent.children.delete(this.component);
   }
 
-  watch<T>(expression: string | Expression<T>, callback: ChangeCallback<T>, useEquals = false) {
-    expression = this.ensureFunction(expression);
+  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T {
+    return this.zone.runGuarded(callback, applyThis, applyArgs, source);
+  }
 
+  watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals = false) {
     this.watchers.push({
-      name: '',
       expression,
       callback,
       useEquals,
     });
   }
 
-  add(watcher: UnsafeWatcher) {
-    watcher.expression = this.ensureFunction(watcher.expression || watcher.expressionString);
-    this.watchers.push(watcher as Watcher);
-  }
-
   markForCheck() {
     this.checked = false;
     this.children.forEach(cd => cd.markForCheck());
-  }
-
-  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T {
-    return this.zone.runGuarded(callback, applyThis, applyArgs, source);
   }
 
   check() {
@@ -113,14 +122,6 @@ export class ChangeDetector implements ZoneSpec {
     this.checked = true;
   }
 
-  private ensureFunction<T>(expression: string | Expression<T>): Expression<T> {
-    if (typeof expression === 'string') {
-      expression = Function('return ' + expression.trim()) as Expression<T>;
-    }
-
-    return expression;
-  }
-
   private scheduleCheck() {
     if (this.timer) {
       clearTimeout(this.timer);
@@ -141,8 +142,6 @@ export class ChangeDetector implements ZoneSpec {
     const targetArea: ChangeDetector = zone.get('changeDetector');
     targetArea.markForCheck();
   }
-
-  // --- ZoneSpec ---
 
   onInvoke(delegate: ZoneDelegate, _: Zone, target: Zone, callback: VoidFunction, applyThis: any, applyArgs: any[], source: string) {
     const output = delegate.invoke(target, callback, applyThis, applyArgs);

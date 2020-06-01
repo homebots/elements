@@ -1,7 +1,10 @@
 import { BOOTSTRAP } from './bootstrap';
-import { ChangeDetector, ChangeDetectorSymbol } from './change-detection';
-import { InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
-import { ZoneRef, ZoneSymbol } from './zone';
+import { ChangeDetectorRef, ChangeDetectorSymbol, ZoneChangeDetector, Expression } from './change-detection';
+import { compileElement } from './element';
+import { InjectionToken, Injector, InjectorSymbol, Provider, getInjectorFrom } from './injector';
+import { Changes, watchInputs as addInputWatchers } from './inputs';
+import { createTemplateFromHtml } from './utils';
+import { ZoneRef } from './zone';
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -25,16 +28,6 @@ export interface ComponentOptions {
 export type LifecycleHook = () => void;
 export type OnChangesHook = (changes: Changes) => void;
 
-export interface Change<T> {
-  value: T;
-  lastValue: T | undefined;
-  firstTime: boolean;
-}
-
-export interface Changes {
-  [property: string]: Change<unknown>;
-}
-
 export interface OnInit {
   onInit: LifecycleHook;
 }
@@ -51,77 +44,29 @@ export interface OnBeforeCheck {
   onBeforeCheck: LifecycleHook;
 }
 
-export interface InputOptions {
-  useEquals: boolean;
-}
-
-interface InputWatcher {
-  property: string;
-  options?: InputOptions;
-}
-
-const INPUTS_META = 'inputs';
-
-export function Input(options?: InputOptions) {
-  return (target: any, property: string) => {
-    const inputs: InputWatcher[] = Reflect.getMetadata(INPUTS_META, target) || [];
-    inputs.push({
-      property,
-      options,
-    });
-
-    Reflect.defineMetadata(INPUTS_META, inputs, target);
-  };
-}
-
-export interface CustomElementClass extends OnInit, OnDestroy, OnChanges, Partial<HTMLElement> {
-  [ChangeDetectorSymbol]?: ChangeDetector;
-  [InjectorSymbol]?: Injector;
-  [ZoneSymbol]?: Zone;
-}
-
 export const TemplateRef: InjectionToken<HTMLTemplateElement> = Symbol('TemplateRef');
 
 export function Component(options: ComponentOptions) {
   return function (ComponentClass: typeof HTMLElement) {
-    class CustomElement extends ComponentClass implements CustomElementClass {
-      property = true;
+    class CustomElement extends ComponentClass {
       onInit: LifecycleHook;
       onDestroy: LifecycleHook;
       onBeforeCheck: LifecycleHook;
       onChanges: OnChangesHook;
 
       connectedCallback() {
-        attachMetadata(this, options);
+        try {
+          createComponentInjector(this, options);
+          attachShadowDom(this, options);
+          addHostAttributes(this, options);
+          compileElement(this.shadowRoot || this, this);
+          addInputWatchers(this);
 
-        const template = options.template;
-        const hasShadowDom = template && (template.includes('<slot') || options.useShadowDom || options.shadowDomOptions);
-        const injector = this[InjectorSymbol];
-
-        if (hasShadowDom) {
-          injector.register({
-            type: TemplateRef,
-            useValue: attachShadowDom(this, options),
-          });
-        } else if (template) {
-          this.innerHTML = template;
-          injector.register({
-            type: TemplateRef,
-            useValue: this,
-          });
+          this.onInit();
+        } catch (error) {
+          console.log(error);
+          throw error;
         }
-
-        addHostAttributes(this, options.hostAttributes);
-
-        if (hasShadowDom) {
-          compileShadowDom(this.shadowRoot, this);
-        } else {
-          compileElement(this, this);
-        }
-
-        watchInputs(this);
-        this[ChangeDetectorSymbol].beforeCheck = this.onBeforeCheck;
-        this.onInit();
       }
 
       disconnectedCallback() {
@@ -130,11 +75,9 @@ export function Component(options: ComponentOptions) {
       }
     }
 
-
-    Object.defineProperty(CustomElement, '__component__', options);
     addLifeCycleHooks(CustomElement);
 
-    BOOTSTRAP.whenStable(() => customElements.define(options.tag, CustomElement, options.extensionOptions));
+    BOOTSTRAP.whenReady(() => customElements.define(options.tag, CustomElement, options.extensionOptions));
   };
 }
 
@@ -149,180 +92,54 @@ function addLifeCycleHooks(target: any) {
   });
 }
 
-function watchInputs(customElement: HTMLElement & OnChanges) {
-  const inputs: InputWatcher[] = Reflect.getMetadata(INPUTS_META, customElement) || [];
-
-  if (!inputs.length) return;
-
-  let changes: Changes = {};
-  let firstTime = true;
-  let hasChanges = false;
-
-  const changeDetector: ChangeDetector = customElement[ChangeDetectorSymbol];
-  inputs.forEach(input => {
-    changeDetector.add({
-      ...input.options,
-      name: input.property,
-      expression: () => customElement[input.property],
-      callback: (value, lastValue) => {
-        hasChanges = true;
-        changes[input.property] = {
-          value,
-          lastValue,
-          firstTime,
-        };
-      },
-    });
-  });
-
-  changeDetector.afterCheck = () => {
-    if (!hasChanges) return;
-
-    customElement.onChanges(changes);
-    firstTime = false;
-    changes = {};
-    hasChanges = false;
-  };
-}
-
-function attachMetadata(component: HTMLElement, options: ComponentOptions) {
+export function findParentComponent(component: HTMLElement): HTMLElement | null {
   let parentComponent: any = component;
-  const customElement = component as unknown as CustomElementClass;
 
-  // tslint:disable-next-line: no-conditional-assignment
   while (parentComponent && (parentComponent = (parentComponent.parentNode || parentComponent.host))) {
-    if (parentComponent[ChangeDetectorSymbol]) {
-      const injector = new Injector(parentComponent[InjectorSymbol], options.providers);
-      const changeDetector = new ChangeDetector(component, parentComponent[ChangeDetectorSymbol], injector);
-      const zone = Zone.current.fork(changeDetector);
-
-      injector.register({
-        type: ZoneRef,
-        useValue: zone,
-      });
-
-      injector.register({
-        type: ChangeDetector,
-        useValue: changeDetector,
-      });
-
-      customElement[InjectorSymbol] = injector;
-      customElement[ChangeDetectorSymbol] = changeDetector;
-      customElement[ZoneSymbol] = zone;
-      return;
-    }
-  }
-}
-
-function attachShadowDom(target: HTMLElement, options: ComponentOptions) {
-  const templateRef = document.createElement('template');
-  const shadowRoot = target.attachShadow(options.shadowDomOptions || { mode: 'open' });
-
-  templateRef.innerHTML = options.template;
-  shadowRoot.appendChild(templateRef.content.cloneNode(true));
-
-  return templateRef;
-}
-
-function addHostAttributes(target: HTMLElement, attributes: HostAttributes) {
-  if (!attributes) return;
-
-  Object.keys(attributes).forEach(attribute => {
-    target.setAttribute(attribute, attributes[attribute]);
-  });
-}
-
-function compileShadowDom(shadowRoot: DocumentFragment, root: HTMLElement) {
-  if (shadowRoot.children.length) {
-    Array.from(shadowRoot.children).forEach((element: HTMLElement) => compileElement(element, root));
-  }
-}
-
-function compileElement(element: HTMLElement, root: HTMLElement) {
-  if (element.children.length) {
-    Array.from(element.children).forEach((e: HTMLElement) => compileElement(e, root));
-  }
-
-  const attributes = element.getAttributeNames();
-  const cd = root[ChangeDetectorSymbol];
-
-  attributes.forEach(attribute => {
-    const value = element.getAttribute(attribute);
-    const firstCharacter = attribute[0];
-    const realAttribute = attribute.slice(1, -1);
-
-    switch (firstCharacter) {
-      case '(':
-        const fn = Function('$event', value).bind(root);
-        attachEvent(cd, element, realAttribute, fn);
-        break;
-
-      case '[':
-        attachWatcher(cd, element, realAttribute, value);
-        break;
-
-      case '@':
-        attachWatcher(cd, element, attribute.slice(1), value, true);
-        break;
-
-      default:
-        setAttribute(element, attribute, value);
-    }
-  });
-}
-
-function setAttribute(element: HTMLElement, attribute: string, value: string) {
-  element.setAttribute(attribute, value);
-}
-
-function attachEvent(cd: ChangeDetector, element: HTMLElement, eventName: string, expression: VoidFunction) {
-  const useCapture = eventName === 'focus' || eventName === 'blur';
-  const fn = (event: Event) => cd.run(() => {
-    cd.markForCheck();
-    expression.apply(element, [event]);
-  });
-
-  element.addEventListener(eventName, fn, { capture: useCapture });
-}
-
-function attachWatcher(
-  cd: ChangeDetector,
-  element: HTMLElement,
-  property: string,
-  expression: string,
-  isAttribute = false,
-) {
-  const transformedProperty = !isAttribute && findElementProperty(element, property);
-
-  cd.add({
-    expression: expression as any,
-    callback: (value: any) => {
-      if (isAttribute) {
-        return setAttribute(element, property, value);
-      }
-
-      element[transformedProperty] = value;
-    },
-  });
-}
-
-const knownProperties: { [key: string]: string } = {};
-
-function findElementProperty(element: HTMLElement, attributeName: string): string {
-  if (knownProperties[attributeName]) {
-    return knownProperties[attributeName];
-  }
-
-  if (attributeName in element) {
-    return attributeName;
-  }
-
-  for (const elementProperty in element) {
-    if (elementProperty.toLowerCase() === attributeName) {
-      knownProperties[attributeName] = elementProperty;
-      return elementProperty;
+    if (parentComponent[InjectorSymbol]) {
+      return parentComponent;
     }
   }
 
-  return attributeName;
+  return null;
+}
+
+export function createComponentInjector(component: HTMLElement, options: ComponentOptions) {
+  const parentComponent = findParentComponent(component);
+  const parentInjector = parentComponent ? parentComponent[InjectorSymbol] : null;
+  const parentChangeDetector = parentInjector?.get(ChangeDetectorRef) || null;
+  const parentZone = (parentInjector?.get(ZoneRef) || Zone.root);
+  const injector = new Injector(parentInjector, options.providers);
+  const changeDetector = new ZoneChangeDetector(component, parentChangeDetector, injector);
+  const zone = parentZone.fork(changeDetector);
+  const template = createTemplateFromHtml(options.template || '');
+
+  injector.register({ type: TemplateRef, useValue: template });
+  injector.register({ type: ZoneRef, useValue: zone });
+  injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
+
+  component[ChangeDetectorSymbol] = changeDetector;
+  component[InjectorSymbol] = injector;
+}
+
+export function attachShadowDom(target: HTMLElement, options: ComponentOptions) {
+  const { template } = options;
+  const useShadowDom = template || options.useShadowDom || options.shadowDomOptions;
+
+  if (useShadowDom) {
+    const templateRef = getInjectorFrom(target).get(TemplateRef);
+    const shadowRoot = target.attachShadow(options.shadowDomOptions || { mode: 'open' });
+
+    shadowRoot.appendChild(templateRef.content.cloneNode(true));
+  }
+}
+
+export function addHostAttributes(target: HTMLElement, options: ComponentOptions) {
+  const { hostAttributes } = options;
+
+  if (!hostAttributes) return;
+
+  Object.keys(hostAttributes).forEach(attribute => {
+    target.setAttribute(attribute, hostAttributes[attribute]);
+  });
 }
