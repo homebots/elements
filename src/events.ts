@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import { ChangeDetector } from './change-detection';
+import { AnyFunction } from './utils';
 
 export type EventCallback<T = any> = (event: T) => void;
 
@@ -55,10 +56,21 @@ export function Output(eventName?: string) {
 
 export const EventEmitter = ClassEventEmitter;
 
-export function attachEvent(cd: ChangeDetector, element: HTMLElement, eventName: string, expression: VoidFunction) {
+export function attachEvent(cd: ChangeDetector, element: HTMLElement, eventNameAndSuffix: string, expression: AnyFunction) {
+  const [eventName, suffix] = eventNameAndSuffix.split('.');
   const useCapture = eventName === 'focus' || eventName === 'blur';
   const fn = (event: Event) => cd.run(() => {
     cd.markForCheck();
+
+    if (suffix === 'once') {
+      element.removeEventListener(eventName, fn, { capture: useCapture });
+    }
+
+    if (suffix === 'stop') {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     expression.apply(element, [event]);
   });
 

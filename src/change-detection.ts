@@ -14,10 +14,6 @@ export interface Watcher {
   useEquals?: boolean;
 }
 
-interface UnsafeWatcher extends Watcher {
-  expressionString?: string;
-}
-
 interface ZoneProperties {
   changeDetector: ChangeDetector;
 }
@@ -35,7 +31,7 @@ export interface ChangeDetector {
   unregister(): void;
   beforeCheck(): void;
   afterCheck(): void;
-  watch<T>(expression: string | Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
+  watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
 }
 
@@ -60,7 +56,7 @@ export class ZoneChangeDetector implements ZoneSpec, ChangeDetector {
     return this._zone;
   }
 
-  readonly name = `change-detector::check ${++uid}`;
+  readonly name = `@${++uid}`;
   readonly properties: ZoneProperties = { changeDetector: this };
 
   private checked = false;

@@ -1,6 +1,6 @@
 export { bootstrap, BOOTSTRAP, domReady } from './bootstrap';
-export { ChangeDetector, ChangeDetectorSymbol, Watcher, ChangeCallback, ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
-export { Component, ComponentOptions, HostAttributes, LifecycleHook, OnBeforeCheck, OnChanges, OnChangesHook, OnDestroy, OnInit, ShadowRootInit, TemplateRef, createComponentInjector, findParentComponent, addHostAttributes, attachShadowDom } from './component';
+export { ChangeCallback, ChangeDetector, ChangeDetectorRef, ChangeDetectorSymbol, Watcher, ZoneChangeDetector } from './change-detection';
+export { addHostAttributes, attachShadowDom, attachWatcher, compileElement, Component, ComponentOptions, createComponentInjector, findElementProperty, findParentComponent, HostAttributes, LifecycleHook, OnBeforeCheck, OnChanges, OnChangesHook, OnDestroy, OnInit, setAttribute, ShadowRootInit, TemplateRef } from './component';
 export { DomEventEmitter, EventEmitter, Output } from './events';
 export { getInjectorFrom, Inject, Injectable, InjectableOptions, InjectionToken, Injector, InjectorSymbol, Provider, Type } from './injector';
 export { Change, Changes, Input, InputOptions } from './inputs';
