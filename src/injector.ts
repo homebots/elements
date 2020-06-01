@@ -50,6 +50,10 @@ export class Injector {
   }
 
   get<T>(token: InjectionToken<T>): T {
+    if ((token as any) === Injector) {
+      return this as unknown as T;
+    }
+
     if (this.has(token)) {
       return this.instantiate(token);
     }

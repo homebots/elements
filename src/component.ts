@@ -1,11 +1,11 @@
 import { BOOTSTRAP } from './bootstrap';
 import { ChangeDetector, ChangeDetectorRef, ChangeDetectorSymbol, ZoneChangeDetector } from './change-detection';
 import { attachEvent } from './events';
+import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
 import { Changes, watchInputs as addInputWatchers } from './inputs';
 import { AnyFunction, createTemplateFromHtml } from './utils';
 import { ZoneRef } from './zone';
-import { ExecutionContext } from './execution-context';
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -60,16 +60,18 @@ export function Component(options: ComponentOptions) {
 
       connectedCallback() {
         try {
-          createComponentInjector(this, options);
+          const injector = createComponentInjector(this, options);
+          const executionContext = new ExecutionContext(this);
+          injector.register({ type: ExecutionContext, useValue: executionContext });
+
           attachShadowDom(this, options);
           addHostAttributes(this, options);
-          compileElement(this.shadowRoot || this, this[ChangeDetectorSymbol], new ExecutionContext(this));
+          compileElement(this.shadowRoot || this, this[ChangeDetectorSymbol], executionContext);
           addInputWatchers(this);
 
           this.onInit();
         } catch (error) {
           console.log(error);
-          throw error;
         }
       }
 
@@ -125,6 +127,8 @@ export function createComponentInjector(component: HTMLElement, options: Compone
   component[ChangeDetectorSymbol] = changeDetector;
   component[InjectorSymbol] = injector;
   (component as any).parentComponent = parentComponent;
+
+  return injector;
 }
 
 export function attachShadowDom(target: HTMLElement, options: ComponentOptions) {
@@ -155,36 +159,38 @@ export function compileElement(elementOrShadowRoot: HTMLElement | DocumentFragme
   }
 
   // skip if is a shadowRoot
-  if ('getAttributeNames' in elementOrShadowRoot === false) return;
+  if ('getAttributeNames' in elementOrShadowRoot === false || elementOrShadowRoot.nodeName === 'TEMPLATE') return;
 
   const element = elementOrShadowRoot as HTMLElement;
-  const attributes = element.getAttributeNames();
-  const attributesWithoutReferences = attributes.filter(s => s[0] !== '#');
+  const attributes = element
+    .getAttributeNames()
+    .filter(attribute => {
+      if (attribute[0] === '#') {
+        executionContext.addLocals({ [attribute.slice(1)]: element });
+        return false;
+      }
+
+      return true;
+    });
 
   attributes.forEach(attribute => {
-    if (attribute[0] === '#') {
-      executionContext.addLocals({ [attribute.slice(1)]: element })
-    }
-  });
-
-  attributesWithoutReferences.forEach(attribute => {
     const value = element.getAttribute(attribute);
     const firstCharacter = attribute[0];
-    const realAttribute = attribute.slice(1, -1);
+    const unwrappedAttribute = attribute.slice(1, -1);
 
     switch (firstCharacter) {
       case '(':
         const eventHandler = ($event: Event) => executionContext.run(value, { $event });
-        attachEvent(changeDetector, element, realAttribute, eventHandler);
+        attachEvent(changeDetector, element, unwrappedAttribute, eventHandler);
         break;
 
       case '[':
-        const valueGetter = executionContext.compile(value);
-        attachWatcher(changeDetector, element, realAttribute, valueGetter);
+        const valueGetter = () => executionContext.run(value);
+        attachWatcher(changeDetector, element, unwrappedAttribute, valueGetter);
         break;
 
       case '@':
-        const attributeGetter = executionContext.compile(value);
+        const attributeGetter = () => executionContext.run(value);
         attachWatcher(changeDetector, element, attribute.slice(1), attributeGetter, true);
         break;
 
@@ -196,10 +202,6 @@ export function compileElement(elementOrShadowRoot: HTMLElement | DocumentFragme
 
 export function setAttribute(element: HTMLElement, attribute: string, value: string) {
   element.setAttribute(attribute, value);
-}
-
-export function addReference() {
-
 }
 
 export function attachWatcher(
@@ -218,9 +220,7 @@ export function attachWatcher(
         return setAttribute(element, property, value);
       }
 
-      if (element[transformedProperty] !== value) {
-        element[transformedProperty] = value;
-      }
+      element[transformedProperty] = value;
     }
   );
 }

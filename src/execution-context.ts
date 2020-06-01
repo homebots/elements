@@ -3,7 +3,7 @@ export interface ExecutionLocals {
 }
 
 export class ExecutionContext {
-  locals: ExecutionLocals;
+  locals: ExecutionLocals = {};
 
   constructor(
     private component: HTMLElement,
@@ -19,23 +19,35 @@ export class ExecutionContext {
   }
 
   run(expression: string, localValues?: ExecutionLocals) {
+    const fn = this.compile(expression, localValues);
+    try {
+      return fn();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  compile(expression: string, localValues?: ExecutionLocals) {
     const locals = this.getLocals(localValues);
     const localsByName = Object.keys(locals);
     const localsAsArray = localsByName.map(key => locals[key]);
-    const fn = Function(...localsByName, expression).bind(this.component, ...localsAsArray);
-    debugger;
-    return fn();
-  }
 
-  compile(expression: string) {
-    const locals = this.getLocals();
-    const localsByName = Object.keys(locals);
-    const localsAsArray = localsByName.map(key => locals[key]);
-
-    return Function(...localsByName, expression).bind(this.component, ...localsAsArray);
+    return Function(...localsByName, `return ${expression}`).bind(this.component, ...localsAsArray);
   }
 
   private getLocals(additionalValues?: ExecutionLocals) {
-    return Object.assign({}, this.parent && this.parent.getLocals(), this.locals, additionalValues);
+    const locals = {};
+
+    if (this.parent) {
+      Object.assign(locals, this.parent.getLocals());
+    }
+
+    Object.assign(locals, this.locals);
+
+    if (additionalValues) {
+      Object.assign(locals, additionalValues);
+    }
+
+    return locals;
   }
 }

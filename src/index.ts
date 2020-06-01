@@ -6,4 +6,5 @@ export { getInjectorFrom, Inject, Injectable, InjectableOptions, InjectionToken,
 export { Change, Changes, Input, InputOptions } from './inputs';
 export { createTemplateFromHtml } from './utils';
 export { ZoneRef, ZoneSymbol } from './zone';
+export { ExecutionContext, ExecutionLocals } from './execution-context';
 

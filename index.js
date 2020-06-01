@@ -3791,6 +3791,9 @@ class Injector {
         return this.providerMap.has(token) || (checkParents && this.parent && this.parent.has(token));
     }
     get(token) {
+        if (token === Injector) {
+            return this;
+        }
         if (this.has(token)) {
             return this.instantiate(token);
         }
@@ -7583,6 +7586,55 @@ var events_2 = events.EventEmitter;
 var events_3 = events.Output;
 var events_4 = events.DomEventEmitter;
 
+var executionContext = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ExecutionContext = void 0;
+class ExecutionContext {
+    constructor(component, parent) {
+        this.component = component;
+        this.parent = parent;
+        this.locals = {};
+    }
+    addLocals(locals) {
+        Object.assign(this.locals, locals);
+    }
+    fork() {
+        return new ExecutionContext(this.component, this);
+    }
+    run(expression, localValues) {
+        const fn = this.compile(expression, localValues);
+        try {
+            return fn();
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+    compile(expression, localValues) {
+        const locals = this.getLocals(localValues);
+        const localsByName = Object.keys(locals);
+        const localsAsArray = localsByName.map(key => locals[key]);
+        return Function(...localsByName, `return ${expression}`).bind(this.component, ...localsAsArray);
+    }
+    getLocals(additionalValues) {
+        const locals = {};
+        if (this.parent) {
+            Object.assign(locals, this.parent.getLocals());
+        }
+        Object.assign(locals, this.locals);
+        if (additionalValues) {
+            Object.assign(locals, additionalValues);
+        }
+        return locals;
+    }
+}
+exports.ExecutionContext = ExecutionContext;
+
+});
+
+unwrapExports(executionContext);
+var executionContext_1 = executionContext.ExecutionContext;
+
 var inputs = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Input = exports.watchInputs = exports.INPUTS_METADATA = void 0;
@@ -7651,48 +7703,9 @@ exports.createTemplateFromHtml = createTemplateFromHtml;
 unwrapExports(utils);
 var utils_1 = utils.createTemplateFromHtml;
 
-var executionContext = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExecutionContext = void 0;
-class ExecutionContext {
-    constructor(component, parent) {
-        this.component = component;
-        this.parent = parent;
-    }
-    addLocals(locals) {
-        Object.assign(this.locals, locals);
-    }
-    fork() {
-        return new ExecutionContext(this.component, this);
-    }
-    run(expression, localValues) {
-        const locals = this.getLocals(localValues);
-        const localsByName = Object.keys(locals);
-        const localsAsArray = localsByName.map(key => locals[key]);
-        const fn = Function(...localsByName, expression).bind(this.component, ...localsAsArray);
-        debugger;
-        return fn();
-    }
-    compile(expression) {
-        const locals = this.getLocals();
-        const localsByName = Object.keys(locals);
-        const localsAsArray = localsByName.map(key => locals[key]);
-        return Function(...localsByName, expression).bind(this.component, ...localsAsArray);
-    }
-    getLocals(additionalValues) {
-        return Object.assign({}, this.parent && this.parent.getLocals(), this.locals, additionalValues);
-    }
-}
-exports.ExecutionContext = ExecutionContext;
-
-});
-
-unwrapExports(executionContext);
-var executionContext_1 = executionContext.ExecutionContext;
-
 var component = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.findElementProperty = exports.attachWatcher = exports.addReference = exports.setAttribute = exports.compileElement = exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.Component = exports.TemplateRef = void 0;
+exports.findElementProperty = exports.attachWatcher = exports.setAttribute = exports.compileElement = exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.Component = exports.TemplateRef = void 0;
 
 
 
@@ -7707,16 +7720,17 @@ function Component(options) {
         class CustomElement extends ComponentClass {
             connectedCallback() {
                 try {
-                    createComponentInjector(this, options);
+                    const injector = createComponentInjector(this, options);
+                    const executionContext$1 = new executionContext.ExecutionContext(this);
+                    injector.register({ type: executionContext.ExecutionContext, useValue: executionContext$1 });
                     attachShadowDom(this, options);
                     addHostAttributes(this, options);
-                    compileElement(this.shadowRoot || this, this[changeDetection.ChangeDetectorSymbol], new executionContext.ExecutionContext(this));
+                    compileElement(this.shadowRoot || this, this[changeDetection.ChangeDetectorSymbol], executionContext$1);
                     inputs.watchInputs(this);
                     this.onInit();
                 }
                 catch (error) {
                     console.log(error);
-                    throw error;
                 }
             }
             disconnectedCallback() {
@@ -7763,6 +7777,7 @@ function createComponentInjector(component, options) {
     component[changeDetection.ChangeDetectorSymbol] = changeDetector;
     component[injector.InjectorSymbol] = injector$1;
     component.parentComponent = parentComponent;
+    return injector$1;
 }
 exports.createComponentInjector = createComponentInjector;
 function attachShadowDom(target, options) {
@@ -7789,31 +7804,33 @@ function compileElement(elementOrShadowRoot, changeDetector, executionContext) {
         Array.from(elementOrShadowRoot.children).forEach((e) => compileElement(e, changeDetector, executionContext));
     }
     // skip if is a shadowRoot
-    if ('getAttributeNames' in elementOrShadowRoot === false)
+    if ('getAttributeNames' in elementOrShadowRoot === false || elementOrShadowRoot.nodeName === 'TEMPLATE')
         return;
     const element = elementOrShadowRoot;
-    const attributes = element.getAttributeNames();
-    const attributesWithoutReferences = attributes.filter(s => s[0] !== '#');
-    attributes.forEach(attribute => {
+    const attributes = element
+        .getAttributeNames()
+        .filter(attribute => {
         if (attribute[0] === '#') {
             executionContext.addLocals({ [attribute.slice(1)]: element });
+            return false;
         }
+        return true;
     });
-    attributesWithoutReferences.forEach(attribute => {
+    attributes.forEach(attribute => {
         const value = element.getAttribute(attribute);
         const firstCharacter = attribute[0];
-        const realAttribute = attribute.slice(1, -1);
+        const unwrappedAttribute = attribute.slice(1, -1);
         switch (firstCharacter) {
             case '(':
                 const eventHandler = ($event) => executionContext.run(value, { $event });
-                events.attachEvent(changeDetector, element, realAttribute, eventHandler);
+                events.attachEvent(changeDetector, element, unwrappedAttribute, eventHandler);
                 break;
             case '[':
-                const valueGetter = executionContext.compile(value);
-                attachWatcher(changeDetector, element, realAttribute, valueGetter);
+                const valueGetter = () => executionContext.run(value);
+                attachWatcher(changeDetector, element, unwrappedAttribute, valueGetter);
                 break;
             case '@':
-                const attributeGetter = executionContext.compile(value);
+                const attributeGetter = () => executionContext.run(value);
                 attachWatcher(changeDetector, element, attribute.slice(1), attributeGetter, true);
                 break;
             default:
@@ -7826,18 +7843,13 @@ function setAttribute(element, attribute, value) {
     element.setAttribute(attribute, value);
 }
 exports.setAttribute = setAttribute;
-function addReference() {
-}
-exports.addReference = addReference;
 function attachWatcher(changeDetector, element, property, getterFunction, isAttribute = false) {
     const transformedProperty = !isAttribute && findElementProperty(element, property);
     changeDetector.watch(getterFunction, (value) => {
         if (isAttribute) {
             return setAttribute(element, property, value);
         }
-        if (element[transformedProperty] !== value) {
-            element[transformedProperty] = value;
-        }
+        element[transformedProperty] = value;
     });
 }
 exports.attachWatcher = attachWatcher;
@@ -7864,15 +7876,14 @@ exports.findElementProperty = findElementProperty;
 unwrapExports(component);
 var component_1 = component.findElementProperty;
 var component_2 = component.attachWatcher;
-var component_3 = component.addReference;
-var component_4 = component.setAttribute;
-var component_5 = component.compileElement;
-var component_6 = component.addHostAttributes;
-var component_7 = component.attachShadowDom;
-var component_8 = component.createComponentInjector;
-var component_9 = component.findParentComponent;
-var component_10 = component.Component;
-var component_11 = component.TemplateRef;
+var component_3 = component.setAttribute;
+var component_4 = component.compileElement;
+var component_5 = component.addHostAttributes;
+var component_6 = component.attachShadowDom;
+var component_7 = component.createComponentInjector;
+var component_8 = component.findParentComponent;
+var component_9 = component.Component;
+var component_10 = component.TemplateRef;
 
 var src = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -7914,6 +7925,8 @@ Object.defineProperty(exports, "createTemplateFromHtml", { enumerable: true, get
 Object.defineProperty(exports, "ZoneRef", { enumerable: true, get: function () { return zone.ZoneRef; } });
 Object.defineProperty(exports, "ZoneSymbol", { enumerable: true, get: function () { return zone.ZoneSymbol; } });
 
+Object.defineProperty(exports, "ExecutionContext", { enumerable: true, get: function () { return executionContext.ExecutionContext; } });
+
 });
 
 var index = unwrapExports(src);
@@ -7946,6 +7959,7 @@ var src_26 = src.Input;
 var src_27 = src.createTemplateFromHtml;
 var src_28 = src.ZoneRef;
 var src_29 = src.ZoneSymbol;
+var src_30 = src.ExecutionContext;
 
 export default index;
-export { src_2 as BOOTSTRAP, src_4 as ChangeDetectorRef, src_5 as ChangeDetectorSymbol, src_11 as Component, src_17 as DomEventEmitter, src_18 as EventEmitter, src_21 as Inject, src_22 as Injectable, src_23 as Injector, src_24 as InjectorSymbol, src_26 as Input, src_19 as Output, src_16 as TemplateRef, src_25 as Type, src_6 as ZoneChangeDetector, src_28 as ZoneRef, src_29 as ZoneSymbol, src_7 as addHostAttributes, src_8 as attachShadowDom, src_9 as attachWatcher, src_1 as bootstrap, src_10 as compileElement, src_12 as createComponentInjector, src_27 as createTemplateFromHtml, src_3 as domReady, src_13 as findElementProperty, src_14 as findParentComponent, src_20 as getInjectorFrom, src_15 as setAttribute };
+export { src_2 as BOOTSTRAP, src_4 as ChangeDetectorRef, src_5 as ChangeDetectorSymbol, src_11 as Component, src_17 as DomEventEmitter, src_18 as EventEmitter, src_30 as ExecutionContext, src_21 as Inject, src_22 as Injectable, src_23 as Injector, src_24 as InjectorSymbol, src_26 as Input, src_19 as Output, src_16 as TemplateRef, src_25 as Type, src_6 as ZoneChangeDetector, src_28 as ZoneRef, src_29 as ZoneSymbol, src_7 as addHostAttributes, src_8 as attachShadowDom, src_9 as attachWatcher, src_1 as bootstrap, src_10 as compileElement, src_12 as createComponentInjector, src_27 as createTemplateFromHtml, src_3 as domReady, src_13 as findElementProperty, src_14 as findParentComponent, src_20 as getInjectorFrom, src_15 as setAttribute };
