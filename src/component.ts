@@ -1,11 +1,12 @@
 import { BOOTSTRAP } from './bootstrap';
-import { ChangeDetector, ChangeDetectorRef, ChangeDetectorSymbol, ZoneChangeDetector } from './change-detection';
+import { ChangeDetector, ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
 import { attachEvent } from './events';
 import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
 import { Changes, watchInputs as addInputWatchers } from './inputs';
-import { AnyFunction, createTemplateFromHtml } from './utils';
+import { AnyFunction, createTemplateFromHtml, noop } from './utils';
 import { ZoneRef } from './zone';
+import { Subscription } from 'rxjs';
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -45,49 +46,63 @@ export interface OnBeforeCheck {
   onBeforeCheck: LifecycleHook;
 }
 
-export type TemplateRef = InjectionToken<HTMLTemplateElement>;
-export const TemplateRef = Symbol('TemplateRef');
+export const TemplateRef: InjectionToken<HTMLTemplateElement> = Symbol('TemplateRef');
 
 export function Component(options: ComponentOptions) {
-  return function (ComponentClass: typeof HTMLElement) {
-    class CustomElement extends ComponentClass {
-      parentComponent: HTMLElement;
+  return function(ComponentClass: typeof HTMLElement) {
+    const CustomElement = createComponentClass(ComponentClass, options);
+    addLifeCycleHooks(CustomElement);
+    BOOTSTRAP.whenReady(() => customElements.define(options.tag, CustomElement, options.extensionOptions));
+  }
+}
 
-      onInit: LifecycleHook;
-      onDestroy: LifecycleHook;
-      onBeforeCheck: LifecycleHook;
-      onChanges: OnChangesHook;
+export interface CustomElement extends HTMLElement {
+  parentComponent: HTMLElement;
 
-      connectedCallback() {
-        try {
-          const injector = createComponentInjector(this, options);
-          const executionContext = new ExecutionContext(this);
-          injector.register({ type: ExecutionContext, useValue: executionContext });
+  onInit: LifecycleHook;
+  onDestroy: LifecycleHook;
+  onBeforeCheck: LifecycleHook;
+  onChanges: OnChangesHook;
+}
 
-          attachShadowDom(this, options);
-          addHostAttributes(this, options);
-          compileElement(this.shadowRoot || this, this[ChangeDetectorSymbol], executionContext);
-          addInputWatchers(this);
+export function createComponentClass(ComponentClass: typeof HTMLElement, options: ComponentOptions) {
+  return class extends ComponentClass implements CustomElement {
+    parentComponent: HTMLElement;
 
-          this.onInit();
-        } catch (error) {
-          console.log(error);
-        }
-      }
+    onInit: LifecycleHook;
+    onDestroy: LifecycleHook;
+    onBeforeCheck: LifecycleHook;
+    onChanges: OnChangesHook;
 
-      disconnectedCallback() {
-        this[ChangeDetectorSymbol].unregister();
-        this.onDestroy();
+    connectedCallback() {
+      this.parentComponent = findParentComponent(this);
+
+      try {
+        const injector = createComponentInjector(this, options);
+        const changeDetector = injector.get(ChangeDetectorRef);
+        const executionContext = new ExecutionContext(this);
+        injector.register({ type: ExecutionContext, useValue: executionContext });
+
+        attachShadowDom(this, options);
+        addHostAttributes(this, options);
+        compileElement(this.shadowRoot || this, changeDetector, executionContext);
+        addInputWatchers(this);
+
+        changeDetector.scheduleCheck();
+        this.onInit();
+      } catch (error) {
+        console.log(error);
       }
     }
 
-    addLifeCycleHooks(CustomElement);
+    disconnectedCallback() {
+      this.onDestroy();
+      getInjectorFrom(this).get(ChangeDetectorRef).unregister();
+      Object.values(this).filter(k => k && typeof k === 'object' && k instanceof Subscription && k.unsubscribe());
+    }
+  }
+};
 
-    BOOTSTRAP.whenReady(() => customElements.define(options.tag, CustomElement, options.extensionOptions));
-  };
-}
-
-const noop = () => { };
 const lifeCycleHooks = ['onInit', 'onDestroy', 'onChanges', 'onBeforeCheck'];
 
 function addLifeCycleHooks(target: any) {
@@ -110,9 +125,9 @@ export function findParentComponent(component: HTMLElement): HTMLElement | null 
   return null;
 }
 
-export function createComponentInjector(component: HTMLElement, options: ComponentOptions) {
-  const parentComponent = findParentComponent(component);
-  const parentInjector = parentComponent ? parentComponent[InjectorSymbol] : null;
+export function createComponentInjector(component: CustomElement, options: ComponentOptions) {
+  const parentComponent = component.parentComponent;
+  const parentInjector: Injector | null = parentComponent ? parentComponent[InjectorSymbol] : null;
   const parentChangeDetector = parentInjector?.get(ChangeDetectorRef) || null;
   const parentZone = (parentInjector?.get(ZoneRef) || Zone.root);
   const injector = new Injector(parentInjector, options.providers);
@@ -124,16 +139,14 @@ export function createComponentInjector(component: HTMLElement, options: Compone
   injector.register({ type: ZoneRef, useValue: zone });
   injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
 
-  component[ChangeDetectorSymbol] = changeDetector;
+  component[ChangeDetectorRef as symbol] = changeDetector;
   component[InjectorSymbol] = injector;
-  (component as any).parentComponent = parentComponent;
 
   return injector;
 }
 
-export function attachShadowDom(target: HTMLElement, options: ComponentOptions) {
-  const { template } = options;
-  const useShadowDom = template || options.useShadowDom || options.shadowDomOptions;
+export function attachShadowDom(target: CustomElement, options: ComponentOptions) {
+  const useShadowDom = Boolean(options.template || options.useShadowDom || options.shadowDomOptions);
 
   if (useShadowDom) {
     const templateRef: HTMLTemplateElement = getInjectorFrom(target).get(TemplateRef);
@@ -143,7 +156,7 @@ export function attachShadowDom(target: HTMLElement, options: ComponentOptions) 
   }
 }
 
-export function addHostAttributes(target: HTMLElement, options: ComponentOptions) {
+export function addHostAttributes(target: CustomElement, options: ComponentOptions) {
   const { hostAttributes } = options;
 
   if (!hostAttributes) return;

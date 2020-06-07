@@ -6,3 +6,7 @@ export function createTemplateFromHtml(html: string) {
 
   return templateRef;
 }
+
+export const noop = () => {};
+
+export type Fn = Function;

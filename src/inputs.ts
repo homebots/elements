@@ -1,5 +1,5 @@
-import { ChangeDetector, ChangeDetectorSymbol } from './change-detection';
-import { OnChanges } from './component';
+import { ChangeDetector, ChangeDetectorRef } from './change-detection';
+import { OnChanges, CustomElement } from './component';
 
 export const INPUTS_METADATA = 'inputs';
 
@@ -22,7 +22,7 @@ export interface InputWatcher {
   options?: InputOptions;
 }
 
-export function watchInputs(customElement: HTMLElement & OnChanges) {
+export function watchInputs(customElement: CustomElement) {
   const inputs: InputWatcher[] = Reflect.getMetadata(INPUTS_METADATA, customElement) || [];
 
   if (!inputs.length) return;
@@ -31,7 +31,7 @@ export function watchInputs(customElement: HTMLElement & OnChanges) {
   let firstTime = true;
   let hasChanges = false;
 
-  const changeDetector: ChangeDetector = customElement[ChangeDetectorSymbol];
+  const changeDetector: ChangeDetector = customElement[ChangeDetectorRef as symbol];
   inputs.forEach(input => {
     changeDetector.watch(
       () => customElement[input.property],

@@ -1,6 +1,6 @@
 import { Subject } from 'rxjs';
 import { ChangeDetector } from './change-detection';
-import { AnyFunction } from './utils';
+import { Fn } from './utils';
 
 export type EventCallback<T = any> = (event: T) => void;
 
@@ -56,14 +56,12 @@ export function Output(eventName?: string) {
 
 export const EventEmitter = ClassEventEmitter;
 
-export function attachEvent(cd: ChangeDetector, element: HTMLElement, eventNameAndSuffix: string, expression: AnyFunction) {
+export function attachEvent(cd: ChangeDetector, element: HTMLElement, eventNameAndSuffix: string, expression: Fn) {
   const [eventName, suffix] = eventNameAndSuffix.split('.');
   const useCapture = eventName === 'focus' || eventName === 'blur';
-  const fn = (event: Event) => cd.run(() => {
-    cd.markForCheck();
-
+  const handler = (event: Event) => cd.run(() => {
     if (suffix === 'once') {
-      element.removeEventListener(eventName, fn, { capture: useCapture });
+      element.removeEventListener(eventName, handler, { capture: useCapture });
     }
 
     if (suffix === 'stop') {
@@ -72,7 +70,9 @@ export function attachEvent(cd: ChangeDetector, element: HTMLElement, eventNameA
     }
 
     expression.apply(element, [event]);
+    cd.markForCheck();
+    cd.scheduleCheck();
   });
 
-  element.addEventListener(eventName, fn, { capture: useCapture });
+  element.addEventListener(eventName, handler, { capture: useCapture });
 }

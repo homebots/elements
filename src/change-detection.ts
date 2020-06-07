@@ -3,6 +3,7 @@ import * as clone from 'lodash.clone';
 import { Injector, InjectionToken } from './injector';
 import { ZoneRef } from './zone';
 import { AnyFunction } from './utils';
+import { CustomElement } from './component';
 
 export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
 export type Expression<T> = () => T;
@@ -20,12 +21,15 @@ interface ZoneProperties {
 
 let uid = 0;
 
-export const ChangeDetectorSymbol = Symbol('change-detector');
-export const ChangeDetectorRef: InjectionToken<ChangeDetector> = ChangeDetectorSymbol;
+export const ChangeDetectorRef: InjectionToken<ChangeDetector> = Symbol('ChangeDetector');
 
 export interface ChangeDetector {
   children: Map<HTMLElement, ChangeDetector>;
+  parent?: ChangeDetector;
+  root: ChangeDetector;
+  name?: string;
 
+  scheduleCheck(): void;
   check(): void;
   markForCheck(): void;
   unregister(): void;
@@ -37,23 +41,17 @@ export interface ChangeDetector {
 
 export class ZoneChangeDetector implements ZoneSpec, ChangeDetector {
   children = new Map<HTMLElement, ChangeDetector>();
+  root: ChangeDetector;
 
   constructor(
-    private component: HTMLElement = null,
-    private parent: ChangeDetector = null,
+    private component: CustomElement = null,
+    public parent: ChangeDetector = null,
     private injector: Injector = null,
   ) {
     if (this.parent) {
       this.parent.children.set(this.component, this);
+      this.root = this.parent.root;
     }
-  }
-
-  private get zone() {
-    if (!this._zone) {
-      this._zone = this.injector.get(ZoneRef);
-    }
-
-    return this._zone;
   }
 
   readonly name = `@${++uid}`;
@@ -64,8 +62,22 @@ export class ZoneChangeDetector implements ZoneSpec, ChangeDetector {
   private _zone: Zone;
   private timer = 0;
 
+  private get zone() {
+    if (!this._zone) {
+      this._zone = this.injector.get(ZoneRef);
+    }
+
+    return this._zone;
+  }
+
+  private get isRoot() {
+    return this.root === this;
+  }
+
   beforeCheck() {
-    (this.component as any).onBeforeCheck();
+    if (this.component) {
+      (this.component as any).onBeforeCheck();
+    }
   }
 
   afterCheck() {}
@@ -88,15 +100,14 @@ export class ZoneChangeDetector implements ZoneSpec, ChangeDetector {
 
   markForCheck() {
     this.checked = false;
-    this.children.forEach(cd => cd.markForCheck());
+    this.children.forEach(child => child.markForCheck());
   }
 
   check() {
-    if (this.checked) {
-      return;
-    }
+    this.beforeCheck();
+    this.children.forEach(cd => cd.check());
 
-    this.checkChildren();
+    if (this.checked) return;
 
     this.watchers.forEach(watcher => {
       const newValue = this.zone.runGuarded(watcher.expression, this.component, [], this.name);
@@ -118,20 +129,15 @@ export class ZoneChangeDetector implements ZoneSpec, ChangeDetector {
     this.checked = true;
   }
 
-  private scheduleCheck() {
+  scheduleCheck() {
     if (this.timer) {
       clearTimeout(this.timer);
     }
 
     this.timer = (window as any).__zone_symbol__setTimeout(() => {
-      this.check();
+      this.root.check();
       this.timer = 0;
     }, 1);
-  }
-
-  private checkChildren() {
-    this.children.forEach(cd => cd.check());
-    this.checked = true;
   }
 
   private markZoneForCheck(zone: Zone) {

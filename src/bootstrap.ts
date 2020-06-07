@@ -20,9 +20,9 @@ class Bootstrap {
 
 export const BOOTSTRAP = new Bootstrap();
 
-export function bootstrap() {
+export function bootstrap(rootNode?: HTMLElement) {
   domReady().then(function() {
-    const app = new Application(document.body);
+    const app = new Application(rootNode || document.body);
     BOOTSTRAP.whenReady(() => app.tick());
     BOOTSTRAP.tick(app);
     return app;

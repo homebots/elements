@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 
-export const Type = Function;
 export type Type<T = object> = new(...args: any[]) => T;
 export type InjectionToken<T = any> = symbol | Type<T>;
 export interface Provider<T = any> {
@@ -15,12 +14,6 @@ export const InjectorSymbol = Symbol('injector');
 export interface InjectableOptions {
   providedBy: 'root' | Injector
 }
-
-const NullInjector = {
-  get(token: any) {
-    throw new Error(String(token.name || token) + ' not found');
-  },
-};
 
 const INJECTABLE_META = 'injectable';
 
@@ -46,14 +39,10 @@ export class Injector {
   }
 
   has(token: InjectionToken, checkParents = false): boolean {
-    return this.providerMap.has(token) || (checkParents && this.parent && this.parent.has(token));
+    return this.providerMap.has(token) || (checkParents && this.parent.has(token));
   }
 
   get<T>(token: InjectionToken<T>): T {
-    if ((token as any) === Injector) {
-      return this as unknown as T;
-    }
-
     if (this.has(token)) {
       return this.instantiate(token);
     }
@@ -99,11 +88,26 @@ export class Injector {
   }
 }
 
-export function Inject() {
+class  NullInjector extends Injector {
+  root = true;
+
+  get<T>(token: any): T {
+    throw new Error(String(token.name || token) + ' not found');
+  }
+
+  has() {
+    return false;
+  }
+};
+
+
+export function Inject<T>(type?: InjectionToken<T>) {
   return (target: any, property: string) => {
     Object.defineProperty(target, property, {
       get() {
-        const type = Reflect.getMetadata('design:type', target, property);
+        if (!type) {
+          type = Reflect.getMetadata('design:type', target, property);
+        }
 
         if (!type) {
           throw new Error('Type metadata not found. Did you forget to add @Injectable() to your class?');

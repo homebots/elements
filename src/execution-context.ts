@@ -14,8 +14,8 @@ export class ExecutionContext {
     Object.assign(this.locals, locals);
   }
 
-  fork() {
-    return new ExecutionContext(this.component, this);
+  fork(host?: HTMLElement) {
+    return new ExecutionContext(host || this.component, this);
   }
 
   run(expression: string, localValues?: ExecutionLocals) {
@@ -51,3 +51,4 @@ export class ExecutionContext {
     return locals;
   }
 }
+

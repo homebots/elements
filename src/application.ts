@@ -1,17 +1,18 @@
-import { ChangeDetector, ChangeDetectorSymbol, ZoneChangeDetector, ChangeDetectorRef } from './change-detection';
+import { ChangeDetector, ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
 import { InjectionToken, Injector, InjectorSymbol } from './injector';
-import { ZoneRef, ZoneSymbol } from './zone';
-import { createComponentInjector } from './component';
+import { ZoneRef } from './zone';
 
-export const ApplicationRef: InjectionToken<Application> = Symbol('ApplicationRef');
+export type ApplicationRef = InjectionToken<Application>;
+export const ApplicationRef = Symbol('ApplicationRef');
 
 export class Application {
-  name = 'root-node';
-  changeDetector: ChangeDetector;
+  private changeDetector: ChangeDetector;
 
   constructor(rootNode: HTMLElement) {
     const injector = rootNode[InjectorSymbol] = new Injector();
     const changeDetector = new ZoneChangeDetector(null, null, injector);
+    changeDetector.root = changeDetector;
+
     const zone = Zone.root.fork(changeDetector);
 
     this.changeDetector = changeDetector;
@@ -22,6 +23,6 @@ export class Application {
   }
 
   tick() {
-    this.changeDetector.check();
+    this.changeDetector.scheduleCheck();
   }
 }
