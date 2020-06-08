@@ -1,5 +1,6 @@
 import { ChangeDetector, ChangeDetectorRef } from './change-detection';
 import { OnChanges, CustomElement } from './component';
+import { getInjectorFrom } from './injector';
 
 export const INPUTS_METADATA = 'inputs';
 
@@ -31,7 +32,8 @@ export function watchInputs(customElement: CustomElement) {
   let firstTime = true;
   let hasChanges = false;
 
-  const changeDetector: ChangeDetector = customElement[ChangeDetectorRef as symbol];
+  const changeDetector = getInjectorFrom(customElement).get(ChangeDetectorRef);
+
   inputs.forEach(input => {
     changeDetector.watch(
       () => customElement[input.property],

@@ -1,4 +1,6 @@
 import { Application } from './application';
+import { ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
+import { Provider } from './injector';
 import { AnyFunction } from './utils';
 
 class Bootstrap {
@@ -20,9 +22,28 @@ class Bootstrap {
 
 export const BOOTSTRAP = new Bootstrap();
 
-export function bootstrap(rootNode?: HTMLElement) {
+export interface BootstrapOptions {
+  rootNode?: HTMLElement;
+  providers: Provider[];
+}
+
+
+export function bootstrap(options?: BootstrapOptions) {
+  if (!options) {
+    const zoneChangeDetector = new ZoneChangeDetector();
+
+    options = {
+      rootNode: document.body,
+      providers: [
+        { type: ChangeDetectorRef, useValue: zoneChangeDetector },
+      ]
+    }
+  }
+
+  const { rootNode, providers } = options;
+
   domReady().then(function() {
-    const app = new Application(rootNode || document.body);
+    const app = new Application(rootNode || document.body, providers);
     BOOTSTRAP.whenReady(() => app.tick());
     BOOTSTRAP.tick(app);
     return app;

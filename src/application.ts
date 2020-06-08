@@ -1,6 +1,5 @@
 import { ChangeDetector, ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
-import { InjectionToken, Injector, InjectorSymbol } from './injector';
-import { ZoneRef } from './zone';
+import { InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
 
 export type ApplicationRef = InjectionToken<Application>;
 export const ApplicationRef = Symbol('ApplicationRef');
@@ -8,18 +7,11 @@ export const ApplicationRef = Symbol('ApplicationRef');
 export class Application {
   private changeDetector: ChangeDetector;
 
-  constructor(rootNode: HTMLElement) {
-    const injector = rootNode[InjectorSymbol] = new Injector();
-    const changeDetector = new ZoneChangeDetector(null, null, injector);
-    changeDetector.root = changeDetector;
-
-    const zone = Zone.root.fork(changeDetector);
-
-    this.changeDetector = changeDetector;
+  constructor(rootNode: HTMLElement, providers: Provider[]) {
+    const injector = rootNode[InjectorSymbol] = new Injector(null, providers);
+    this.changeDetector = injector.get(ChangeDetectorRef);
 
     injector.register({ type: ApplicationRef, useValue: this });
-    injector.register({ type: ChangeDetectorRef, useValue: this.changeDetector });
-    injector.register({ type: ZoneRef, useValue: zone });
   }
 
   tick() {

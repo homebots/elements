@@ -6,6 +6,7 @@ export interface Provider<T = any> {
   type: Type<T> | symbol;
   useClass?: T;
   useValue?: T;
+  useFactory?: () => T;
 }
 
 export const InjectableMetadataKey = 'injectable';
@@ -81,7 +82,7 @@ export class Injector {
     }
 
     const provider = this.providerMap.get(token);
-    const value = provider.useValue || new provider.useClass();
+    const value = provider.useValue !== undefined ? provider.useValue : (provider.useFactory && provider.useFactory()) || new provider.useClass();
     this.cache.set(token, value);
 
     return value;

@@ -1,12 +1,11 @@
+import { Subscription } from 'rxjs';
 import { BOOTSTRAP } from './bootstrap';
-import { ChangeDetector, ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
+import { ChangeDetector, ChangeDetectorRef } from './change-detection';
 import { attachEvent } from './events';
 import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
 import { Changes, watchInputs as addInputWatchers } from './inputs';
 import { AnyFunction, createTemplateFromHtml, noop } from './utils';
-import { ZoneRef } from './zone';
-import { Subscription } from 'rxjs';
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -129,17 +128,13 @@ export function createComponentInjector(component: CustomElement, options: Compo
   const parentComponent = component.parentComponent;
   const parentInjector: Injector | null = parentComponent ? parentComponent[InjectorSymbol] : null;
   const parentChangeDetector = parentInjector?.get(ChangeDetectorRef) || null;
-  const parentZone = (parentInjector?.get(ZoneRef) || Zone.root);
   const injector = new Injector(parentInjector, options.providers);
-  const changeDetector = new ZoneChangeDetector(component, parentChangeDetector, injector);
-  const zone = parentZone.fork(changeDetector);
   const template = createTemplateFromHtml(options.template || '');
+  const changeDetector = parentChangeDetector?.fork(component);
 
   injector.register({ type: TemplateRef, useValue: template });
-  injector.register({ type: ZoneRef, useValue: zone });
   injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
 
-  component[ChangeDetectorRef as symbol] = changeDetector;
   component[InjectorSymbol] = injector;
 
   return injector;
