@@ -8,5 +8,5 @@ export function createTemplateFromHtml(html: string) {
 }
 
 export const noop = () => {};
-
 export type Fn = Function;
+export const setTimeoutNative: Window['setTimeout'] = (...args) => (window as any).__zone_symbol__setTimeout(...args);

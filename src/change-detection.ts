@@ -3,7 +3,7 @@ import * as isEqual from 'lodash.isequal';
 import 'zone.js/dist/zone.js';
 import { CustomElement } from './component';
 import { InjectionToken } from './injector';
-import { AnyFunction } from './utils';
+import { AnyFunction, setTimeoutNative } from './utils';
 
 export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
 export type Expression<T> = () => T;
@@ -21,9 +21,10 @@ export const ChangeDetectorRef: InjectionToken<ChangeDetector> = Symbol('ChangeD
 
 export interface ChangeDetector {
   id?: string;
+  parent?: ChangeDetector;
 
   beforeCheck(): void;
-  afterCheck(): void;
+  afterCheck(fn: AnyFunction): void;
 
   markForCheck(): void;
   scheduleCheck(): void;
@@ -32,7 +33,7 @@ export interface ChangeDetector {
   unregister(): void;
   watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
-  fork(component: CustomElement): ChangeDetector;
+  fork(component?: CustomElement): ChangeDetector;
 }
 
 export class BaseChangeDetector implements ChangeDetector {
@@ -41,8 +42,9 @@ export class BaseChangeDetector implements ChangeDetector {
   protected root: ChangeDetector;
 
   private timer = 0;
-  protected checked = false;
+  protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
   private watchers: Watcher[] = [];
+  private _afterCheck: AnyFunction[] = [];
 
   constructor(
     protected component: CustomElement = null,
@@ -60,7 +62,9 @@ export class BaseChangeDetector implements ChangeDetector {
     }
   }
 
-  afterCheck() {}
+  afterCheck(fn: AnyFunction) {
+    this._afterCheck.push(fn);
+  }
 
   unregister() {
     if (this.parent) {
@@ -86,14 +90,15 @@ export class BaseChangeDetector implements ChangeDetector {
   }
 
   markForCheck() {
-    this.checked = false;
+    this.state = 'dirty';
     this.children.forEach(child => child.markForCheck());
   }
 
   check() {
-    if (this.checked) return;
+    if (this.state === 'checked') return;
 
     this.beforeCheck();
+    this.state = 'checking';
 
     this.watchers.forEach(watcher => {
       const newValue = this.run(watcher.expression, this.component, []);
@@ -111,8 +116,14 @@ export class BaseChangeDetector implements ChangeDetector {
       }
     });
 
-    this.afterCheck();
-    this.checked = true;
+    this.onAfterCheck();
+
+    if (this.state !== 'checking') {
+      this.scheduleCheck();
+      return;
+    }
+
+    this.state = 'checked';
   }
 
   checkTree() {
@@ -125,14 +136,18 @@ export class BaseChangeDetector implements ChangeDetector {
       clearTimeout(this.timer);
     }
 
-    this.timer = (window as any).__zone_symbol__setTimeout(() => {
+    this.timer = setTimeoutNative(() => {
       this.checkTree();
       this.timer = 0;
     }, 1);
   }
 
-  fork(component: CustomElement) {
-    return new BaseChangeDetector(component, this);
+  fork(component?: CustomElement) {
+    return new BaseChangeDetector(component || this.component, this);
+  }
+
+  private onAfterCheck() {
+    this._afterCheck.forEach(fn => fn());
   }
 }
 

@@ -1,11 +1,12 @@
 import { Subscription } from 'rxjs';
 import { BOOTSTRAP } from './bootstrap';
-import { ChangeDetector, ChangeDetectorRef } from './change-detection';
-import { attachEvent } from './events';
+import { ChangeDetectorRef } from './change-detection';
+import { compileTree } from './compile-tree';
 import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
-import { Changes, watchInputs as addInputWatchers } from './inputs';
-import { AnyFunction, createTemplateFromHtml, noop } from './utils';
+import { addInputWatchers, Changes } from './inputs';
+import { createTemplateFromHtml, noop } from './utils';
+
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -48,7 +49,7 @@ export interface OnBeforeCheck {
 export const TemplateRef: InjectionToken<HTMLTemplateElement> = Symbol('TemplateRef');
 
 export function Component(options: ComponentOptions) {
-  return function(ComponentClass: typeof HTMLElement) {
+  return function (ComponentClass: typeof HTMLElement) {
     const CustomElement = createComponentClass(ComponentClass, options);
     addLifeCycleHooks(CustomElement);
     BOOTSTRAP.whenReady(() => customElements.define(options.tag, CustomElement, options.extensionOptions));
@@ -84,8 +85,8 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
 
         attachShadowDom(this, options);
         addHostAttributes(this, options);
-        compileElement(this.shadowRoot || this, changeDetector, executionContext);
-        addInputWatchers(this);
+        compileTree(this.shadowRoot || this, changeDetector, executionContext);
+        addInputWatchers(this, changeDetector);
 
         changeDetector.scheduleCheck();
         this.onInit();
@@ -159,97 +160,4 @@ export function addHostAttributes(target: CustomElement, options: ComponentOptio
   Object.keys(hostAttributes).forEach(attribute => {
     target.setAttribute(attribute, hostAttributes[attribute]);
   });
-}
-
-export function compileElement(elementOrShadowRoot: HTMLElement | DocumentFragment, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
-  if (elementOrShadowRoot.children.length) {
-    Array.from(elementOrShadowRoot.children).forEach((e: HTMLElement) => compileElement(e, changeDetector, executionContext));
-  }
-
-  // skip if is a shadowRoot
-  if ('getAttributeNames' in elementOrShadowRoot === false || elementOrShadowRoot.nodeName === 'TEMPLATE') return;
-
-  const element = elementOrShadowRoot as HTMLElement;
-  const attributes = element
-    .getAttributeNames()
-    .filter(attribute => {
-      if (attribute[0] === '#') {
-        executionContext.addLocals({ [attribute.slice(1)]: element });
-        return false;
-      }
-
-      return true;
-    });
-
-  attributes.forEach(attribute => {
-    const value = element.getAttribute(attribute);
-    const firstCharacter = attribute[0];
-    const unwrappedAttribute = attribute.slice(1, -1);
-
-    switch (firstCharacter) {
-      case '(':
-        const eventHandler = ($event: Event) => executionContext.run(value, { $event });
-        attachEvent(changeDetector, element, unwrappedAttribute, eventHandler);
-        break;
-
-      case '[':
-        const valueGetter = () => executionContext.run(value);
-        attachWatcher(changeDetector, element, unwrappedAttribute, valueGetter);
-        break;
-
-      case '@':
-        const attributeGetter = () => executionContext.run(value);
-        attachWatcher(changeDetector, element, attribute.slice(1), attributeGetter, true);
-        break;
-
-      default:
-        setAttribute(element, attribute, value);
-    }
-  });
-}
-
-export function setAttribute(element: HTMLElement, attribute: string, value: string) {
-  element.setAttribute(attribute, value);
-}
-
-export function attachWatcher(
-  changeDetector: ChangeDetector,
-  element: HTMLElement,
-  property: string,
-  getterFunction: AnyFunction,
-  isAttribute = false,
-) {
-  const transformedProperty = !isAttribute && findElementProperty(element, property);
-
-  changeDetector.watch(
-    getterFunction,
-    (value: any) => {
-      if (isAttribute) {
-        return setAttribute(element, property, value);
-      }
-
-      element[transformedProperty] = value;
-    }
-  );
-}
-
-const knownProperties: { [key: string]: string } = {};
-
-export function findElementProperty(element: HTMLElement, attributeName: string): string {
-  if (knownProperties[attributeName]) {
-    return knownProperties[attributeName];
-  }
-
-  if (attributeName in element) {
-    return attributeName;
-  }
-
-  for (const elementProperty in element) {
-    if (elementProperty.toLowerCase() === attributeName) {
-      knownProperties[attributeName] = elementProperty;
-      return elementProperty;
-    }
-  }
-
-  return attributeName;
 }

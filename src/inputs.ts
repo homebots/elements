@@ -23,7 +23,7 @@ export interface InputWatcher {
   options?: InputOptions;
 }
 
-export function watchInputs(customElement: CustomElement) {
+export function addInputWatchers(customElement: CustomElement, changeDetector: ChangeDetector) {
   const inputs: InputWatcher[] = Reflect.getMetadata(INPUTS_METADATA, customElement) || [];
 
   if (!inputs.length) return;
@@ -31,8 +31,6 @@ export function watchInputs(customElement: CustomElement) {
   let changes: Changes = {};
   let firstTime = true;
   let hasChanges = false;
-
-  const changeDetector = getInjectorFrom(customElement).get(ChangeDetectorRef);
 
   inputs.forEach(input => {
     changeDetector.watch(
@@ -49,14 +47,14 @@ export function watchInputs(customElement: CustomElement) {
     );
   });
 
-  changeDetector.afterCheck = () => {
+  changeDetector.afterCheck(() => {
     if (!hasChanges) return;
 
     customElement.onChanges(changes);
     firstTime = false;
     changes = {};
     hasChanges = false;
-  };
+  });
 }
 
 export function Input(options?: InputOptions) {

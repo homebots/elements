@@ -3631,9 +3631,29 @@ function stubFalse() {
 module.exports = isEqual;
 });
 
+var utils = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.setTimeoutNative = exports.noop = exports.createTemplateFromHtml = void 0;
+function createTemplateFromHtml(html) {
+    const templateRef = document.createElement('template');
+    templateRef.innerHTML = html;
+    return templateRef;
+}
+exports.createTemplateFromHtml = createTemplateFromHtml;
+exports.noop = () => { };
+exports.setTimeoutNative = (...args) => window.__zone_symbol__setTimeout(...args);
+
+});
+
+unwrapExports(utils);
+var utils_1 = utils.setTimeoutNative;
+var utils_2 = utils.noop;
+var utils_3 = utils.createTemplateFromHtml;
+
 var changeDetection = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ZoneChangeDetector = exports.BaseChangeDetector = exports.ChangeDetectorRef = void 0;
+
 
 
 
@@ -3646,8 +3666,9 @@ class BaseChangeDetector {
         this.id = `@${++uid}`;
         this.children = new Map();
         this.timer = 0;
-        this.checked = false;
+        this.state = 'dirty';
         this.watchers = [];
+        this._afterCheck = [];
         if (this.parent) {
             this.parent.children.set(this.component, this);
             this.root = this.parent.root;
@@ -3658,7 +3679,9 @@ class BaseChangeDetector {
             this.component.onBeforeCheck();
         }
     }
-    afterCheck() { }
+    afterCheck(fn) {
+        this._afterCheck.push(fn);
+    }
     unregister() {
         if (this.parent) {
             this.parent.children.delete(this.component);
@@ -3680,13 +3703,14 @@ class BaseChangeDetector {
         });
     }
     markForCheck() {
-        this.checked = false;
+        this.state = 'dirty';
         this.children.forEach(child => child.markForCheck());
     }
     check() {
-        if (this.checked)
+        if (this.state === 'checked')
             return;
         this.beforeCheck();
+        this.state = 'checking';
         this.watchers.forEach(watcher => {
             const newValue = this.run(watcher.expression, this.component, []);
             const lastValue = watcher.lastValue;
@@ -3699,8 +3723,12 @@ class BaseChangeDetector {
                 watcher.lastValue = useEquals ? lodash_clone(newValue) : newValue;
             }
         });
-        this.afterCheck();
-        this.checked = true;
+        this.onAfterCheck();
+        if (this.state !== 'checking') {
+            this.scheduleCheck();
+            return;
+        }
+        this.state = 'checked';
     }
     checkTree() {
         this.check();
@@ -3710,13 +3738,16 @@ class BaseChangeDetector {
         if (this.timer) {
             clearTimeout(this.timer);
         }
-        this.timer = window.__zone_symbol__setTimeout(() => {
+        this.timer = utils.setTimeoutNative(() => {
             this.checkTree();
             this.timer = 0;
         }, 1);
     }
     fork(component) {
-        return new BaseChangeDetector(component, this);
+        return new BaseChangeDetector(component || this.component, this);
+    }
+    onAfterCheck() {
+        this._afterCheck.forEach(fn => fn());
     }
 }
 exports.BaseChangeDetector = BaseChangeDetector;
@@ -3994,6 +4025,221 @@ function __extends(d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 }
+
+var __assign = function() {
+    __assign = Object.assign || function __assign(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+
+function __rest(s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+}
+
+function __decorate(decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+}
+
+function __param(paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+}
+
+function __metadata(metadataKey, metadataValue) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(metadataKey, metadataValue);
+}
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
+
+function __generator(thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+}
+
+function __createBinding(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}
+
+function __exportStar(m, exports) {
+    for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+
+function __values(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+}
+
+function __read(o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+}
+
+function __spread() {
+    for (var ar = [], i = 0; i < arguments.length; i++)
+        ar = ar.concat(__read(arguments[i]));
+    return ar;
+}
+
+function __spreadArrays() {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+}
+function __await(v) {
+    return this instanceof __await ? (this.v = v, this) : new __await(v);
+}
+
+function __asyncGenerator(thisArg, _arguments, generator) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var g = generator.apply(thisArg, _arguments || []), i, q = [];
+    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
+    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+    function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
+    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
+    function fulfill(value) { resume("next", value); }
+    function reject(value) { resume("throw", value); }
+    function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
+}
+
+function __asyncDelegator(o) {
+    var i, p;
+    return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
+    function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
+}
+
+function __asyncValues(o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+}
+
+function __makeTemplateObject(cooked, raw) {
+    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
+    return cooked;
+}
+function __importStar(mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result.default = mod;
+    return result;
+}
+
+function __importDefault(mod) {
+    return (mod && mod.__esModule) ? mod : { default: mod };
+}
+
+function __classPrivateFieldGet(receiver, privateMap) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to get private field on non-instance");
+    }
+    return privateMap.get(receiver);
+}
+
+function __classPrivateFieldSet(receiver, privateMap, value) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to set private field on non-instance");
+    }
+    privateMap.set(receiver, value);
+    return value;
+}
+
+var tslib_es6 = /*#__PURE__*/Object.freeze({
+	__proto__: null,
+	__extends: __extends,
+	get __assign () { return __assign; },
+	__rest: __rest,
+	__decorate: __decorate,
+	__param: __param,
+	__metadata: __metadata,
+	__awaiter: __awaiter,
+	__generator: __generator,
+	__createBinding: __createBinding,
+	__exportStar: __exportStar,
+	__values: __values,
+	__read: __read,
+	__spread: __spread,
+	__spreadArrays: __spreadArrays,
+	__await: __await,
+	__asyncGenerator: __asyncGenerator,
+	__asyncDelegator: __asyncDelegator,
+	__asyncValues: __asyncValues,
+	__makeTemplateObject: __makeTemplateObject,
+	__importStar: __importStar,
+	__importDefault: __importDefault,
+	__classPrivateFieldGet: __classPrivateFieldGet,
+	__classPrivateFieldSet: __classPrivateFieldSet
+});
 
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 function isFunction(x) {
@@ -7606,6 +7852,329 @@ var events_2 = events.EventEmitter;
 var events_3 = events.Output;
 var events_4 = events.DomEventEmitter;
 
+var compileElement_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.findElementProperty = exports.watchAttribute = exports.watchProperty = exports.compileElement = void 0;
+
+function compileElement(element, changeDetector, executionContext) {
+    if (element.nodeType !== element.ELEMENT_NODE)
+        return;
+    element.getAttributeNames().forEach(attribute => {
+        const value = element.getAttribute(attribute);
+        const firstCharacter = attribute[0];
+        const unwrappedAttribute = attribute.slice(1, -1);
+        const unprefixedAttribute = attribute.slice(1);
+        switch (firstCharacter) {
+            case '(':
+                const eventHandler = ($event) => executionContext.run(value, { $event });
+                events.attachEvent(changeDetector, element, unwrappedAttribute, eventHandler);
+                break;
+            case '[':
+                watchProperty(changeDetector, executionContext, element, unwrappedAttribute, value);
+                break;
+            case '@':
+                watchAttribute(changeDetector, executionContext, element, unprefixedAttribute, value);
+                break;
+        }
+    });
+}
+exports.compileElement = compileElement;
+function watchProperty(changeDetector, executionContext, element, property, expression) {
+    const transformedProperty = findElementProperty(element, property);
+    const valueGetter = () => executionContext.run(expression);
+    changeDetector.watch(valueGetter, (value) => element[transformedProperty] = value);
+}
+exports.watchProperty = watchProperty;
+function watchAttribute(changeDetector, executionContext, element, property, expression) {
+    const valueGetter = () => executionContext.run(expression);
+    changeDetector.watch(valueGetter, (value) => element.setAttribute(property, value));
+}
+exports.watchAttribute = watchAttribute;
+const knownProperties = {};
+function findElementProperty(element, attributeName) {
+    if (knownProperties[attributeName]) {
+        return knownProperties[attributeName];
+    }
+    if (attributeName in element) {
+        return attributeName;
+    }
+    for (const elementProperty in element) {
+        if (elementProperty.toLowerCase() === attributeName) {
+            knownProperties[attributeName] = elementProperty;
+            return elementProperty;
+        }
+    }
+    return attributeName;
+}
+exports.findElementProperty = findElementProperty;
+
+});
+
+unwrapExports(compileElement_1);
+var compileElement_2 = compileElement_1.findElementProperty;
+var compileElement_3 = compileElement_1.watchAttribute;
+var compileElement_4 = compileElement_1.watchProperty;
+var compileElement_5 = compileElement_1.compileElement;
+
+var compileTree_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.readReferences = exports.compileTree = void 0;
+
+
+function compileTree(elementOrShadowRoot, changeDetector, executionContext) {
+    const nodeType = elementOrShadowRoot.nodeType;
+    if (nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE)
+        return;
+    if (elementOrShadowRoot.children.length) {
+        Array.from(elementOrShadowRoot.children).forEach((e) => compileTree(e, changeDetector, executionContext));
+    }
+    // skip if is a shadowRoot
+    if ('getAttributeNames' in elementOrShadowRoot === false)
+        return;
+    // skip compilation of nodes inside templates
+    if (elementOrShadowRoot.parentNode.nodeName === 'TEMPLATE')
+        return;
+    readReferences(elementOrShadowRoot, executionContext);
+    if (elementOrShadowRoot.nodeName === 'TEMPLATE') {
+        compileTemplate_1.compileTemplate(elementOrShadowRoot, changeDetector, executionContext);
+        return;
+    }
+    compileElement_1.compileElement(elementOrShadowRoot, changeDetector, executionContext);
+}
+exports.compileTree = compileTree;
+function readReferences(element, executionContext) {
+    element.getAttributeNames().forEach(attribute => {
+        if (attribute[0] === '#') {
+            executionContext.addLocals({ [attribute.slice(1)]: element });
+        }
+    });
+}
+exports.readReferences = readReferences;
+
+});
+
+unwrapExports(compileTree_1);
+var compileTree_2 = compileTree_1.readReferences;
+var compileTree_3 = compileTree_1.compileTree;
+
+var inputs = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Input = exports.addInputWatchers = exports.INPUTS_METADATA = void 0;
+exports.INPUTS_METADATA = 'inputs';
+function addInputWatchers(customElement, changeDetector) {
+    const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, customElement) || [];
+    if (!inputs.length)
+        return;
+    let changes = {};
+    let firstTime = true;
+    let hasChanges = false;
+    inputs.forEach(input => {
+        var _a;
+        changeDetector.watch(() => customElement[input.property], (value, lastValue) => {
+            hasChanges = true;
+            changes[input.property] = {
+                value,
+                lastValue,
+                firstTime,
+            };
+        }, (_a = input.options) === null || _a === void 0 ? void 0 : _a.useEquals);
+    });
+    changeDetector.afterCheck(() => {
+        if (!hasChanges)
+            return;
+        customElement.onChanges(changes);
+        firstTime = false;
+        changes = {};
+        hasChanges = false;
+    });
+}
+exports.addInputWatchers = addInputWatchers;
+function Input(options) {
+    return (target, property) => {
+        const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, target) || [];
+        inputs.push({
+            property,
+            options,
+        });
+        Reflect.defineMetadata(exports.INPUTS_METADATA, inputs, target);
+    };
+}
+exports.Input = Input;
+
+});
+
+unwrapExports(inputs);
+var inputs_1 = inputs.Input;
+var inputs_2 = inputs.addInputWatchers;
+var inputs_3 = inputs.INPUTS_METADATA;
+
+var ifContainer = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.IfContainer = void 0;
+
+
+
+
+let IfContainer = /** @class */ (() => {
+    class IfContainer {
+        constructor(template, changeDetector, executionContext) {
+            this.template = template;
+            this.changeDetector = changeDetector;
+            this.executionContext = executionContext;
+            this.nodes = [];
+        }
+        onChanges() {
+            this.removeNodes();
+            if (this.if) {
+                this.createNodes(this.template);
+            }
+            else if (this.else) {
+                this.createNodes(this.else);
+            }
+        }
+        createNodes(template) {
+            const templateNodes = Array.from(template.content.childNodes);
+            const fragment = document.createDocumentFragment();
+            const nodes = templateNodes.map(n => n.cloneNode(true));
+            this.nodes = nodes;
+            fragment.append(...nodes);
+            nodes.forEach(node => compileTree_1.compileTree(node, this.changeDetector, this.executionContext));
+            utils.setTimeoutNative(() => {
+                this.changeDetector.markForCheck();
+                this.changeDetector.scheduleCheck();
+            });
+            utils.setTimeoutNative(() => this.template.parentNode.appendChild(fragment), 5);
+        }
+        removeNodes() {
+            this.nodes.forEach(node => node.parentNode.removeChild(node));
+            this.nodes = [];
+        }
+    }
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", Boolean)
+    ], IfContainer.prototype, "if", void 0);
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", HTMLTemplateElement)
+    ], IfContainer.prototype, "else", void 0);
+    return IfContainer;
+})();
+exports.IfContainer = IfContainer;
+
+});
+
+unwrapExports(ifContainer);
+var ifContainer_1 = ifContainer.IfContainer;
+
+var forContainer = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ForContainer = void 0;
+
+
+
+
+let ForContainer = /** @class */ (() => {
+    class ForContainer {
+        constructor(template, changeDetector, executionContext) {
+            this.template = template;
+            this.changeDetector = changeDetector;
+            this.executionContext = executionContext;
+            this.nodes = [];
+        }
+        onChanges() {
+            if (!this.of || !this.for) {
+                return;
+            }
+            const items = Array.from(this.of);
+            const changeDetector = this.changeDetector;
+            const templateNodes = Array.from(this.template.content.children);
+            const fragment = document.createDocumentFragment();
+            const allNodes = [];
+            this.removeNodes();
+            const children = items.map((item, index) => {
+                const context = this.executionContext.fork();
+                const nodes = templateNodes.map(n => n.cloneNode(true));
+                allNodes.push(...nodes);
+                context.addLocals({ [this.for]: item, index });
+                fragment.append(...nodes);
+                return { nodes, context };
+            });
+            this.nodes = allNodes;
+            children.forEach((o) => o.nodes.forEach(node => compileTree_1.compileTree(node, changeDetector, o.context)));
+            utils.setTimeoutNative(() => {
+                changeDetector.markForCheck();
+                changeDetector.scheduleCheck();
+            });
+            utils.setTimeoutNative(() => this.template.parentNode.appendChild(fragment), 5);
+        }
+        removeNodes() {
+            this.nodes.forEach(node => node.parentNode.removeChild(node));
+            this.nodes = [];
+        }
+    }
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", Object)
+    ], ForContainer.prototype, "of", void 0);
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", String)
+    ], ForContainer.prototype, "for", void 0);
+    return ForContainer;
+})();
+exports.ForContainer = ForContainer;
+
+});
+
+unwrapExports(forContainer);
+var forContainer_1 = forContainer.ForContainer;
+
+var compileTemplate_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.compileTemplate = void 0;
+
+
+
+function compileTemplate(template, changeDetector, executionContext) {
+    let containerName;
+    let container;
+    const attributes = template.getAttributeNames().filter(attribute => {
+        if (attribute[0] === '*') {
+            containerName = attribute;
+            return false;
+        }
+        return true;
+    });
+    switch (containerName) {
+        case '*if':
+            container = new ifContainer.IfContainer(template, changeDetector, executionContext);
+            break;
+        case '*for':
+            container = new forContainer.ForContainer(template, changeDetector, executionContext);
+            break;
+    }
+    if (!container)
+        return;
+    inputs.addInputWatchers(container, changeDetector);
+    attributes.forEach(attribute => {
+        if (attribute[0] !== '[')
+            return;
+        const expression = template.getAttribute(attribute);
+        const unboxedAttribute = attribute.slice(1, -1);
+        changeDetector.watch(() => executionContext.run(expression), (value) => {
+            container[unboxedAttribute] = value;
+            changeDetector.markForCheck();
+        });
+    });
+}
+exports.compileTemplate = compileTemplate;
+
+});
+
+unwrapExports(compileTemplate_1);
+var compileTemplate_2 = compileTemplate_1.compileTemplate;
+
 var executionContext = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExecutionContext = void 0;
@@ -7655,80 +8224,9 @@ exports.ExecutionContext = ExecutionContext;
 unwrapExports(executionContext);
 var executionContext_1 = executionContext.ExecutionContext;
 
-var inputs = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Input = exports.watchInputs = exports.INPUTS_METADATA = void 0;
-
-
-exports.INPUTS_METADATA = 'inputs';
-function watchInputs(customElement) {
-    const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, customElement) || [];
-    if (!inputs.length)
-        return;
-    let changes = {};
-    let firstTime = true;
-    let hasChanges = false;
-    const changeDetector = injector.getInjectorFrom(customElement).get(changeDetection.ChangeDetectorRef);
-    inputs.forEach(input => {
-        var _a;
-        changeDetector.watch(() => customElement[input.property], (value, lastValue) => {
-            hasChanges = true;
-            changes[input.property] = {
-                value,
-                lastValue,
-                firstTime,
-            };
-        }, (_a = input.options) === null || _a === void 0 ? void 0 : _a.useEquals);
-    });
-    changeDetector.afterCheck = () => {
-        if (!hasChanges)
-            return;
-        customElement.onChanges(changes);
-        firstTime = false;
-        changes = {};
-        hasChanges = false;
-    };
-}
-exports.watchInputs = watchInputs;
-function Input(options) {
-    return (target, property) => {
-        const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, target) || [];
-        inputs.push({
-            property,
-            options,
-        });
-        Reflect.defineMetadata(exports.INPUTS_METADATA, inputs, target);
-    };
-}
-exports.Input = Input;
-
-});
-
-unwrapExports(inputs);
-var inputs_1 = inputs.Input;
-var inputs_2 = inputs.watchInputs;
-var inputs_3 = inputs.INPUTS_METADATA;
-
-var utils = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.noop = exports.createTemplateFromHtml = void 0;
-function createTemplateFromHtml(html) {
-    const templateRef = document.createElement('template');
-    templateRef.innerHTML = html;
-    return templateRef;
-}
-exports.createTemplateFromHtml = createTemplateFromHtml;
-exports.noop = () => { };
-
-});
-
-unwrapExports(utils);
-var utils_1 = utils.noop;
-var utils_2 = utils.createTemplateFromHtml;
-
 var component = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.findElementProperty = exports.attachWatcher = exports.setAttribute = exports.compileElement = exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.createComponentClass = exports.Component = exports.TemplateRef = void 0;
+exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.createComponentClass = exports.Component = exports.TemplateRef = void 0;
 
 
 
@@ -7757,8 +8255,8 @@ function createComponentClass(ComponentClass, options) {
                 injector.register({ type: executionContext.ExecutionContext, useValue: executionContext$1 });
                 attachShadowDom(this, options);
                 addHostAttributes(this, options);
-                compileElement(this.shadowRoot || this, changeDetector, executionContext$1);
-                inputs.watchInputs(this);
+                compileTree_1.compileTree(this.shadowRoot || this, changeDetector, executionContext$1);
+                inputs.addInputWatchers(this, changeDetector);
                 changeDetector.scheduleCheck();
                 this.onInit();
             }
@@ -7823,92 +8321,17 @@ function addHostAttributes(target, options) {
     });
 }
 exports.addHostAttributes = addHostAttributes;
-function compileElement(elementOrShadowRoot, changeDetector, executionContext) {
-    if (elementOrShadowRoot.children.length) {
-        Array.from(elementOrShadowRoot.children).forEach((e) => compileElement(e, changeDetector, executionContext));
-    }
-    // skip if is a shadowRoot
-    if ('getAttributeNames' in elementOrShadowRoot === false || elementOrShadowRoot.nodeName === 'TEMPLATE')
-        return;
-    const element = elementOrShadowRoot;
-    const attributes = element
-        .getAttributeNames()
-        .filter(attribute => {
-        if (attribute[0] === '#') {
-            executionContext.addLocals({ [attribute.slice(1)]: element });
-            return false;
-        }
-        return true;
-    });
-    attributes.forEach(attribute => {
-        const value = element.getAttribute(attribute);
-        const firstCharacter = attribute[0];
-        const unwrappedAttribute = attribute.slice(1, -1);
-        switch (firstCharacter) {
-            case '(':
-                const eventHandler = ($event) => executionContext.run(value, { $event });
-                events.attachEvent(changeDetector, element, unwrappedAttribute, eventHandler);
-                break;
-            case '[':
-                const valueGetter = () => executionContext.run(value);
-                attachWatcher(changeDetector, element, unwrappedAttribute, valueGetter);
-                break;
-            case '@':
-                const attributeGetter = () => executionContext.run(value);
-                attachWatcher(changeDetector, element, attribute.slice(1), attributeGetter, true);
-                break;
-            default:
-                setAttribute(element, attribute, value);
-        }
-    });
-}
-exports.compileElement = compileElement;
-function setAttribute(element, attribute, value) {
-    element.setAttribute(attribute, value);
-}
-exports.setAttribute = setAttribute;
-function attachWatcher(changeDetector, element, property, getterFunction, isAttribute = false) {
-    const transformedProperty = !isAttribute && findElementProperty(element, property);
-    changeDetector.watch(getterFunction, (value) => {
-        if (isAttribute) {
-            return setAttribute(element, property, value);
-        }
-        element[transformedProperty] = value;
-    });
-}
-exports.attachWatcher = attachWatcher;
-const knownProperties = {};
-function findElementProperty(element, attributeName) {
-    if (knownProperties[attributeName]) {
-        return knownProperties[attributeName];
-    }
-    if (attributeName in element) {
-        return attributeName;
-    }
-    for (const elementProperty in element) {
-        if (elementProperty.toLowerCase() === attributeName) {
-            knownProperties[attributeName] = elementProperty;
-            return elementProperty;
-        }
-    }
-    return attributeName;
-}
-exports.findElementProperty = findElementProperty;
 
 });
 
 unwrapExports(component);
-var component_1 = component.findElementProperty;
-var component_2 = component.attachWatcher;
-var component_3 = component.setAttribute;
-var component_4 = component.compileElement;
-var component_5 = component.addHostAttributes;
-var component_6 = component.attachShadowDom;
-var component_7 = component.createComponentInjector;
-var component_8 = component.findParentComponent;
-var component_9 = component.createComponentClass;
-var component_10 = component.Component;
-var component_11 = component.TemplateRef;
+var component_1 = component.addHostAttributes;
+var component_2 = component.attachShadowDom;
+var component_3 = component.createComponentInjector;
+var component_4 = component.findParentComponent;
+var component_5 = component.createComponentClass;
+var component_6 = component.Component;
+var component_7 = component.TemplateRef;
 
 var src = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -7924,16 +8347,22 @@ Object.defineProperty(exports, "BaseChangeDetector", { enumerable: true, get: fu
 Object.defineProperty(exports, "ChangeDetectorRef", { enumerable: true, get: function () { return changeDetection.ChangeDetectorRef; } });
 Object.defineProperty(exports, "ZoneChangeDetector", { enumerable: true, get: function () { return changeDetection.ZoneChangeDetector; } });
 
+Object.defineProperty(exports, "compileElement", { enumerable: true, get: function () { return compileElement_1.compileElement; } });
+Object.defineProperty(exports, "findElementProperty", { enumerable: true, get: function () { return compileElement_1.findElementProperty; } });
+Object.defineProperty(exports, "watchAttribute", { enumerable: true, get: function () { return compileElement_1.watchAttribute; } });
+Object.defineProperty(exports, "watchProperty", { enumerable: true, get: function () { return compileElement_1.watchProperty; } });
+
+Object.defineProperty(exports, "compileTemplate", { enumerable: true, get: function () { return compileTemplate_1.compileTemplate; } });
+
+Object.defineProperty(exports, "compileTree", { enumerable: true, get: function () { return compileTree_1.compileTree; } });
+Object.defineProperty(exports, "readReferences", { enumerable: true, get: function () { return compileTree_1.readReferences; } });
+
 Object.defineProperty(exports, "addHostAttributes", { enumerable: true, get: function () { return component.addHostAttributes; } });
 Object.defineProperty(exports, "attachShadowDom", { enumerable: true, get: function () { return component.attachShadowDom; } });
-Object.defineProperty(exports, "attachWatcher", { enumerable: true, get: function () { return component.attachWatcher; } });
-Object.defineProperty(exports, "compileElement", { enumerable: true, get: function () { return component.compileElement; } });
 Object.defineProperty(exports, "Component", { enumerable: true, get: function () { return component.Component; } });
 Object.defineProperty(exports, "createComponentClass", { enumerable: true, get: function () { return component.createComponentClass; } });
 Object.defineProperty(exports, "createComponentInjector", { enumerable: true, get: function () { return component.createComponentInjector; } });
-Object.defineProperty(exports, "findElementProperty", { enumerable: true, get: function () { return component.findElementProperty; } });
 Object.defineProperty(exports, "findParentComponent", { enumerable: true, get: function () { return component.findParentComponent; } });
-Object.defineProperty(exports, "setAttribute", { enumerable: true, get: function () { return component.setAttribute; } });
 Object.defineProperty(exports, "TemplateRef", { enumerable: true, get: function () { return component.TemplateRef; } });
 
 Object.defineProperty(exports, "DomEventEmitter", { enumerable: true, get: function () { return events.DomEventEmitter; } });
@@ -7963,28 +8392,31 @@ var src_5 = src.domReady;
 var src_6 = src.BaseChangeDetector;
 var src_7 = src.ChangeDetectorRef;
 var src_8 = src.ZoneChangeDetector;
-var src_9 = src.addHostAttributes;
-var src_10 = src.attachShadowDom;
-var src_11 = src.attachWatcher;
-var src_12 = src.compileElement;
-var src_13 = src.Component;
-var src_14 = src.createComponentClass;
-var src_15 = src.createComponentInjector;
-var src_16 = src.findElementProperty;
-var src_17 = src.findParentComponent;
-var src_18 = src.setAttribute;
-var src_19 = src.TemplateRef;
-var src_20 = src.DomEventEmitter;
-var src_21 = src.EventEmitter;
-var src_22 = src.Output;
-var src_23 = src.ExecutionContext;
-var src_24 = src.getInjectorFrom;
-var src_25 = src.Inject;
-var src_26 = src.Injectable;
-var src_27 = src.Injector;
-var src_28 = src.InjectorSymbol;
-var src_29 = src.Input;
-var src_30 = src.createTemplateFromHtml;
+var src_9 = src.compileElement;
+var src_10 = src.findElementProperty;
+var src_11 = src.watchAttribute;
+var src_12 = src.watchProperty;
+var src_13 = src.compileTemplate;
+var src_14 = src.compileTree;
+var src_15 = src.readReferences;
+var src_16 = src.addHostAttributes;
+var src_17 = src.attachShadowDom;
+var src_18 = src.Component;
+var src_19 = src.createComponentClass;
+var src_20 = src.createComponentInjector;
+var src_21 = src.findParentComponent;
+var src_22 = src.TemplateRef;
+var src_23 = src.DomEventEmitter;
+var src_24 = src.EventEmitter;
+var src_25 = src.Output;
+var src_26 = src.ExecutionContext;
+var src_27 = src.getInjectorFrom;
+var src_28 = src.Inject;
+var src_29 = src.Injectable;
+var src_30 = src.Injector;
+var src_31 = src.InjectorSymbol;
+var src_32 = src.Input;
+var src_33 = src.createTemplateFromHtml;
 
 export default index;
-export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_6 as BaseChangeDetector, src_7 as ChangeDetectorRef, src_13 as Component, src_20 as DomEventEmitter, src_21 as EventEmitter, src_23 as ExecutionContext, src_25 as Inject, src_26 as Injectable, src_27 as Injector, src_28 as InjectorSymbol, src_29 as Input, src_22 as Output, src_19 as TemplateRef, src_8 as ZoneChangeDetector, src_9 as addHostAttributes, src_10 as attachShadowDom, src_11 as attachWatcher, src_3 as bootstrap, src_12 as compileElement, src_14 as createComponentClass, src_15 as createComponentInjector, src_30 as createTemplateFromHtml, src_5 as domReady, src_16 as findElementProperty, src_17 as findParentComponent, src_24 as getInjectorFrom, src_18 as setAttribute };
+export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_6 as BaseChangeDetector, src_7 as ChangeDetectorRef, src_18 as Component, src_23 as DomEventEmitter, src_24 as EventEmitter, src_26 as ExecutionContext, src_28 as Inject, src_29 as Injectable, src_30 as Injector, src_31 as InjectorSymbol, src_32 as Input, src_25 as Output, src_22 as TemplateRef, src_8 as ZoneChangeDetector, src_16 as addHostAttributes, src_17 as attachShadowDom, src_3 as bootstrap, src_9 as compileElement, src_13 as compileTemplate, src_14 as compileTree, src_19 as createComponentClass, src_20 as createComponentInjector, src_33 as createTemplateFromHtml, src_5 as domReady, src_10 as findElementProperty, src_21 as findParentComponent, src_27 as getInjectorFrom, src_15 as readReferences, src_11 as watchAttribute, src_12 as watchProperty };
