@@ -20,6 +20,7 @@ export interface HostAttributes {
 export interface ComponentOptions {
   tag: string;
   template?: string;
+  styles?: string;
   useShadowDom?: boolean;
   extensionOptions?: { extends: string; };
   shadowDomOptions?: ShadowRootInit;
@@ -130,10 +131,16 @@ export function createComponentInjector(component: CustomElement, options: Compo
   const parentInjector: Injector | null = parentComponent ? parentComponent[InjectorSymbol] : null;
   const parentChangeDetector = parentInjector?.get(ChangeDetectorRef) || null;
   const injector = new Injector(parentInjector, options.providers);
-  const template = createTemplateFromHtml(options.template || '');
+
+  let template = options.template || '';
+  if (options.styles) {
+    template += `<style>${options.styles}</style>`;
+  }
+
+  const templateRef = createTemplateFromHtml(template);
   const changeDetector = parentChangeDetector?.fork(component);
 
-  injector.register({ type: TemplateRef, useValue: template });
+  injector.register({ type: TemplateRef, useValue: templateRef });
   injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
 
   component[InjectorSymbol] = injector;

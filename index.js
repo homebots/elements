@@ -8295,9 +8295,13 @@ function createComponentInjector(component, options) {
     const parentInjector = parentComponent ? parentComponent[injector.InjectorSymbol] : null;
     const parentChangeDetector = (parentInjector === null || parentInjector === void 0 ? void 0 : parentInjector.get(changeDetection.ChangeDetectorRef)) || null;
     const injector$1 = new injector.Injector(parentInjector, options.providers);
-    const template = utils.createTemplateFromHtml(options.template || '');
+    let template = options.template || '';
+    if (options.styles) {
+        template += `<style>${options.styles}</style>`;
+    }
+    const templateRef = utils.createTemplateFromHtml(template);
     const changeDetector = parentChangeDetector === null || parentChangeDetector === void 0 ? void 0 : parentChangeDetector.fork(component);
-    injector$1.register({ type: exports.TemplateRef, useValue: template });
+    injector$1.register({ type: exports.TemplateRef, useValue: templateRef });
     injector$1.register({ type: changeDetection.ChangeDetectorRef, useValue: changeDetector });
     component[injector.InjectorSymbol] = injector$1;
     return injector$1;
