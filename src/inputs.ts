@@ -1,18 +1,8 @@
-import { ChangeDetector, ChangeDetectorRef } from './change-detection';
+import { ChangeDetector, ChangeDetectorRef, Changes } from './change-detection';
 import { OnChanges, CustomElement } from './component';
 import { getInjectorFrom } from './injector';
 
 export const INPUTS_METADATA = 'inputs';
-
-export interface Change<T> {
-  value: T;
-  lastValue: T | undefined;
-  firstTime: boolean;
-}
-
-export interface Changes {
-  [property: string]: Change<unknown>;
-}
 
 export interface InputOptions {
   useEquals: boolean;
@@ -23,36 +13,39 @@ export interface InputWatcher {
   options?: InputOptions;
 }
 
-export function addInputWatchers(customElement: CustomElement, changeDetector: ChangeDetector) {
-  const inputs: InputWatcher[] = Reflect.getMetadata(INPUTS_METADATA, customElement) || [];
+export function getInputMetadata(customElement: any): InputWatcher[] {
+  return Reflect.getMetadata(INPUTS_METADATA, customElement) || [];
+}
+
+export function addInputWatchers(customElement: object & OnChanges, changeDetector: ChangeDetector) {
+  const inputs = getInputMetadata(customElement);
 
   if (!inputs.length) return;
 
-  let changes: Changes = {};
+  let inputChanges: Changes = {};
   let firstTime = true;
   let hasChanges = false;
 
-  inputs.forEach(input => {
-    changeDetector.watch(
-      () => customElement[input.property],
-      (value, lastValue) => {
+  changeDetector.afterCheck((changes: Changes) => {
+    inputs.forEach(input => {
+      const change = changes[input.property];
+
+      if (change) {
         hasChanges = true;
-        changes[input.property] = {
-          value,
-          lastValue,
+        inputChanges[input.property] = {
+          value: change.value,
+          lastValue: change.lastValue,
           firstTime,
         };
-      },
-      input.options?.useEquals,
-    );
-  });
+      }
+    });
 
-  changeDetector.afterCheck(() => {
     if (!hasChanges) return;
 
     customElement.onChanges(changes);
+
     firstTime = false;
-    changes = {};
+    inputChanges = {};
     hasChanges = false;
   });
 }

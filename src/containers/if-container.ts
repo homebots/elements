@@ -1,12 +1,14 @@
 import { ChangeDetector } from '../change-detection';
-import { compileTree } from '../compile-tree';
 import { ExecutionContext } from '../execution-context';
 import { Input } from '../inputs';
 import { setTimeoutNative } from '../utils';
+import { Inject } from '../injector';
+import { DomHelpers } from '../dom-helpers';
 
 export class IfContainer {
   @Input() if: boolean;
   @Input() else: HTMLTemplateElement;
+  @Inject() dom: DomHelpers;
 
   constructor(
     private template: HTMLTemplateElement,
@@ -23,6 +25,8 @@ export class IfContainer {
       this.createNodes(this.template);
     } else if (this.else) {
       this.createNodes(this.else);
+    } else {
+      this.removeNodes();
     }
   }
 
@@ -30,17 +34,18 @@ export class IfContainer {
     const templateNodes = Array.from(template.content.childNodes);
     const fragment = document.createDocumentFragment();
     const nodes = templateNodes.map(n => n.cloneNode(true));
-    this.nodes = nodes;
 
     fragment.append(...nodes);
-    nodes.forEach(node => compileTree(node as HTMLElement, this.changeDetector, this.executionContext));
+    nodes.forEach(node => this.dom.compileTree(node as HTMLElement, this.changeDetector, this.executionContext));
+
+    this.changeDetector.markForCheck();
+    this.changeDetector.scheduleCheck();
 
     setTimeoutNative(() => {
-      this.changeDetector.markForCheck();
-      this.changeDetector.scheduleCheck();
-    });
-
-    setTimeoutNative(() => this.template.parentNode.appendChild(fragment), 5);
+      this.removeNodes();
+      this.nodes = nodes;
+      this.template.parentNode.appendChild(fragment);
+    }, 2);
   }
 
   private removeNodes() {

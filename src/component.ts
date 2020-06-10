@@ -1,12 +1,11 @@
 import { Subscription } from 'rxjs';
 import { BOOTSTRAP } from './bootstrap';
-import { ChangeDetectorRef } from './change-detection';
-import { compileTree } from './compile-tree';
+import { ChangeDetectorRef, Changes } from './change-detection';
 import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
-import { addInputWatchers, Changes } from './inputs';
+import { addInputWatchers } from './inputs';
 import { createTemplateFromHtml, noop } from './utils';
-
+import { DomHelpers } from './dom-helpers';
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -83,10 +82,11 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
         const changeDetector = injector.get(ChangeDetectorRef);
         const executionContext = new ExecutionContext(this);
         injector.register({ type: ExecutionContext, useValue: executionContext });
+        const dom = injector.get(DomHelpers);
 
         attachShadowDom(this, options);
         addHostAttributes(this, options);
-        compileTree(this.shadowRoot || this, changeDetector, executionContext);
+        dom.compileTree(this.shadowRoot || this, changeDetector, executionContext);
         addInputWatchers(this, changeDetector);
 
         changeDetector.scheduleCheck();

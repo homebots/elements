@@ -8,11 +8,22 @@ import { AnyFunction, setTimeoutNative } from './utils';
 export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
 export type Expression<T> = () => T;
 
+export interface Change<T> {
+  value: T;
+  lastValue: T | undefined;
+  firstTime?: boolean;
+}
+
+export interface Changes {
+  [property: string]: Change<unknown>;
+}
+
 export interface Watcher {
   expression: AnyFunction;
   callback?: ChangeCallback<unknown>;
   lastValue?: any;
   useEquals?: boolean;
+  name?: string;
 }
 
 let uid = 0;
@@ -31,6 +42,7 @@ export interface ChangeDetector {
   check(): void;
   checkTree(): void;
   unregister(): void;
+  watch<T>(expression: Watcher | Expression<T>): void;
   watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
   fork(component?: CustomElement): ChangeDetector;
@@ -39,7 +51,6 @@ export interface ChangeDetector {
 export class BaseChangeDetector implements ChangeDetector {
   readonly id = `@${++uid}`;
   protected children = new Map<HTMLElement, BaseChangeDetector>();
-  protected root: ChangeDetector;
 
   private timer = 0;
   protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
@@ -52,7 +63,6 @@ export class BaseChangeDetector implements ChangeDetector {
   ) {
     if (this.parent) {
       this.parent.children.set(this.component, this);
-      this.root = this.parent.root;
     }
   }
 
@@ -74,16 +84,21 @@ export class BaseChangeDetector implements ChangeDetector {
 
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[]): T {
     try {
-
       return callback.apply(applyThis, applyArgs);
     } catch (error) {
       console.log(error)
     }
   }
 
-  watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals = false) {
+  watch<T>(expression: Watcher | Expression<T>): void;
+  watch<T>(expression: Watcher | Expression<T>, callback?: ChangeCallback<T>, useEquals = false) {
+    if (typeof expression !== 'function')  {
+      this.watchers.push(expression as Watcher);
+      return;
+    }
+
     this.watchers.push({
-      expression,
+      expression: expression as Expression<T>,
       callback,
       useEquals,
     });
@@ -99,6 +114,7 @@ export class BaseChangeDetector implements ChangeDetector {
 
     this.beforeCheck();
     this.state = 'checking';
+    const changes: Changes = {};
 
     this.watchers.forEach(watcher => {
       const newValue = this.run(watcher.expression, this.component, []);
@@ -107,16 +123,22 @@ export class BaseChangeDetector implements ChangeDetector {
       const useEquals = watcher.useEquals;
       const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !isEqual(newValue, lastValue));
 
-      if (hasChanges) {
-        if (watcher.callback) {
-          this.run(watcher.callback, null, [newValue, lastValue]);
-        }
-
-        watcher.lastValue = useEquals ? clone(newValue) : newValue;
+      if (!hasChanges) {
+        return;
       }
+
+      if (watcher.name) {
+        changes[watcher.name] = { value: newValue, lastValue }
+      }
+
+      if (watcher.callback) {
+        this.run(watcher.callback, null, [newValue, lastValue]);
+      }
+
+      watcher.lastValue = useEquals ? clone(newValue) : newValue;
     });
 
-    this.onAfterCheck();
+    this.onAfterCheck(changes);
 
     if (this.state !== 'checking') {
       this.scheduleCheck();
@@ -146,8 +168,8 @@ export class BaseChangeDetector implements ChangeDetector {
     return new BaseChangeDetector(component || this.component, this);
   }
 
-  private onAfterCheck() {
-    this._afterCheck.forEach(fn => fn());
+  private onAfterCheck(changes: Changes) {
+    this._afterCheck.forEach(fn => fn(changes));
   }
 }
 

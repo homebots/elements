@@ -3637,11 +3637,12 @@ exports.setTimeoutNative = exports.noop = exports.createTemplateFromHtml = void 
 function createTemplateFromHtml(html) {
     const templateRef = document.createElement('template');
     templateRef.innerHTML = html;
+    templateRef.normalize();
     return templateRef;
 }
 exports.createTemplateFromHtml = createTemplateFromHtml;
 exports.noop = () => { };
-exports.setTimeoutNative = (...args) => window.__zone_symbol__setTimeout(...args);
+exports.setTimeoutNative = (...args) => (window.__zone_symbol__setTimeout || window.setTimeout)(...args);
 
 });
 
@@ -3671,7 +3672,6 @@ class BaseChangeDetector {
         this._afterCheck = [];
         if (this.parent) {
             this.parent.children.set(this.component, this);
-            this.root = this.parent.root;
         }
     }
     beforeCheck() {
@@ -3696,8 +3696,12 @@ class BaseChangeDetector {
         }
     }
     watch(expression, callback, useEquals = false) {
+        if (typeof expression !== 'function') {
+            this.watchers.push(expression);
+            return;
+        }
         this.watchers.push({
-            expression,
+            expression: expression,
             callback,
             useEquals,
         });
@@ -3711,19 +3715,24 @@ class BaseChangeDetector {
             return;
         this.beforeCheck();
         this.state = 'checking';
+        const changes = {};
         this.watchers.forEach(watcher => {
             const newValue = this.run(watcher.expression, this.component, []);
             const lastValue = watcher.lastValue;
             const useEquals = watcher.useEquals;
             const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !lodash_isequal(newValue, lastValue));
-            if (hasChanges) {
-                if (watcher.callback) {
-                    this.run(watcher.callback, null, [newValue, lastValue]);
-                }
-                watcher.lastValue = useEquals ? lodash_clone(newValue) : newValue;
+            if (!hasChanges) {
+                return;
             }
+            if (watcher.name) {
+                changes[watcher.name] = { value: newValue, lastValue };
+            }
+            if (watcher.callback) {
+                this.run(watcher.callback, null, [newValue, lastValue]);
+            }
+            watcher.lastValue = useEquals ? lodash_clone(newValue) : newValue;
         });
-        this.onAfterCheck();
+        this.onAfterCheck(changes);
         if (this.state !== 'checking') {
             this.scheduleCheck();
             return;
@@ -3746,8 +3755,8 @@ class BaseChangeDetector {
     fork(component) {
         return new BaseChangeDetector(component || this.component, this);
     }
-    onAfterCheck() {
-        this._afterCheck.forEach(fn => fn());
+    onAfterCheck(changes) {
+        this._afterCheck.forEach(fn => fn(changes));
     }
 }
 exports.BaseChangeDetector = BaseChangeDetector;
@@ -3800,202 +3809,6 @@ unwrapExports(changeDetection);
 var changeDetection_1 = changeDetection.ZoneChangeDetector;
 var changeDetection_2 = changeDetection.BaseChangeDetector;
 var changeDetection_3 = changeDetection.ChangeDetectorRef;
-
-var injector = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getInjectorFrom = exports.Injectable = exports.Inject = exports.Injector = exports.InjectorSymbol = exports.InjectableMetadataKey = void 0;
-
-exports.InjectableMetadataKey = 'injectable';
-exports.InjectorSymbol = Symbol('injector');
-const INJECTABLE_META = 'injectable';
-class Injector {
-    constructor(parent, providers) {
-        this.parent = parent;
-        this.providerMap = new Map();
-        this.cache = new Map();
-        if (!parent) {
-            this.parent = NullInjector;
-            this.root = true;
-        }
-        if (providers) {
-            providers.forEach(provider => this.register(provider));
-        }
-        this.register({ type: Injector, useValue: this });
-    }
-    has(token, checkParents = false) {
-        return this.providerMap.has(token) || (checkParents && this.parent.has(token));
-    }
-    get(token) {
-        if (this.has(token)) {
-            return this.instantiate(token);
-        }
-        // lazy registration of types on root injector
-        if (this.root && typeof token === 'function') {
-            const providerOptions = Reflect.getMetadata(INJECTABLE_META, token) || {};
-            if (providerOptions.providedBy === 'root') {
-                token.prototype[exports.InjectorSymbol] = this;
-                this.register({ type: token, useClass: token });
-                return this.instantiate(token);
-            }
-            if (providerOptions.providedBy && providerOptions.providedBy instanceof Injector) {
-                const injector = providerOptions.providedBy;
-                token.prototype[exports.InjectorSymbol] = injector;
-                injector.register({ type: token, useClass: token });
-                return injector.instantiate(token);
-            }
-        }
-        return this.parent.get(token);
-    }
-    register(provider) {
-        if (typeof provider === 'function') {
-            this.providerMap.set(provider, { type: provider, useClass: provider });
-        }
-        else {
-            this.providerMap.set(provider.type, provider);
-        }
-    }
-    instantiate(token) {
-        if (this.cache.has(token)) {
-            return this.cache.get(token);
-        }
-        const provider = this.providerMap.get(token);
-        const value = provider.useValue !== undefined ? provider.useValue : (provider.useFactory && provider.useFactory()) || new provider.useClass();
-        this.cache.set(token, value);
-        return value;
-    }
-}
-exports.Injector = Injector;
-class NullInjector extends Injector {
-    constructor() {
-        super(...arguments);
-        this.root = true;
-    }
-    get(token) {
-        throw new Error(String(token.name || token) + ' not found');
-    }
-    has() {
-        return false;
-    }
-}
-function Inject(type) {
-    return (target, property) => {
-        Object.defineProperty(target, property, {
-            get() {
-                if (!type) {
-                    type = Reflect.getMetadata('design:type', target, property);
-                }
-                if (!type) {
-                    throw new Error('Type metadata not found. Did you forget to add @Injectable() to your class?');
-                }
-                const value = getInjectorFrom(this).get(type);
-                Object.defineProperty(this, property, { value });
-                return value;
-            },
-        });
-    };
-}
-exports.Inject = Inject;
-function Injectable(options) {
-    return (target) => {
-        Reflect.defineMetadata(INJECTABLE_META, options, target);
-    };
-}
-exports.Injectable = Injectable;
-function getInjectorFrom(target) {
-    return target[exports.InjectorSymbol];
-}
-exports.getInjectorFrom = getInjectorFrom;
-
-});
-
-unwrapExports(injector);
-var injector_1 = injector.getInjectorFrom;
-var injector_2 = injector.Injectable;
-var injector_3 = injector.Inject;
-var injector_4 = injector.Injector;
-var injector_5 = injector.InjectorSymbol;
-var injector_6 = injector.InjectableMetadataKey;
-
-var application = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Application = exports.ApplicationRef = void 0;
-
-
-exports.ApplicationRef = Symbol('ApplicationRef');
-class Application {
-    constructor(rootNode, providers) {
-        const injector$1 = rootNode[injector.InjectorSymbol] = new injector.Injector(null, providers);
-        this.changeDetector = injector$1.get(changeDetection.ChangeDetectorRef);
-        injector$1.register({ type: exports.ApplicationRef, useValue: this });
-    }
-    tick() {
-        this.changeDetector.scheduleCheck();
-    }
-}
-exports.Application = Application;
-
-});
-
-unwrapExports(application);
-var application_1 = application.Application;
-var application_2 = application.ApplicationRef;
-
-var bootstrap_1 = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.domReady = exports.bootstrap = exports.BOOTSTRAP = void 0;
-
-
-class Bootstrap {
-    constructor() {
-        this.promise = new Promise((resolve) => this.resolve = resolve);
-    }
-    tick(app) {
-        this.resolve(app);
-    }
-    whenReady(fn) {
-        this.promise = this.promise.then(fn);
-    }
-}
-exports.BOOTSTRAP = new Bootstrap();
-function bootstrap(options) {
-    if (!options) {
-        const zoneChangeDetector = new changeDetection.ZoneChangeDetector();
-        options = {
-            rootNode: document.body,
-            providers: [
-                { type: changeDetection.ChangeDetectorRef, useValue: zoneChangeDetector },
-            ]
-        };
-    }
-    const { rootNode, providers } = options;
-    domReady().then(function () {
-        const app = new application.Application(rootNode || document.body, providers);
-        exports.BOOTSTRAP.whenReady(() => app.tick());
-        exports.BOOTSTRAP.tick(app);
-        return app;
-    }).catch(console.log);
-}
-exports.bootstrap = bootstrap;
-// Thanks @stimulus:
-// https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
-function domReady() {
-    return new Promise(resolve => {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', resolve);
-        }
-        else {
-            resolve();
-        }
-    });
-}
-exports.domReady = domReady;
-
-});
-
-unwrapExports(bootstrap_1);
-var bootstrap_2 = bootstrap_1.domReady;
-var bootstrap_3 = bootstrap_1.bootstrap;
-var bootstrap_4 = bootstrap_1.BOOTSTRAP;
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -4240,6 +4053,370 @@ var tslib_es6 = /*#__PURE__*/Object.freeze({
 	__classPrivateFieldGet: __classPrivateFieldGet,
 	__classPrivateFieldSet: __classPrivateFieldSet
 });
+
+var injector = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getInjectorFrom = exports.Injectable = exports.Inject = exports.Injector = exports.InjectorSymbol = exports.InjectableMetadataKey = void 0;
+
+exports.InjectableMetadataKey = 'injectable';
+exports.InjectorSymbol = Symbol('injector');
+const INJECTABLE_META = 'injectable';
+class Injector {
+    constructor(parent, providers) {
+        this.parent = parent;
+        this.providerMap = new Map();
+        this.cache = new Map();
+        if (!parent) {
+            this.parent = new NullInjector();
+            this.root = true;
+        }
+        if (providers) {
+            providers.forEach(provider => this.register(provider));
+        }
+        this.register({ type: Injector, useValue: this });
+    }
+    has(token, checkParents = true) {
+        return this.providerMap.has(token) || (checkParents && this.parent.has(token));
+    }
+    get(token) {
+        if (this.has(token, false)) {
+            return this.instantiateWithCache(token);
+        }
+        // lazy registration of types on root injector
+        if (this.root && typeof token === 'function') {
+            const providerOptions = Reflect.getMetadata(INJECTABLE_META, token) || {};
+            if (!providerOptions.providedBy || providerOptions.providedBy === 'root') {
+                token.prototype[exports.InjectorSymbol] = this;
+                this.register({ type: token, useClass: token });
+                return this.instantiateWithCache(token);
+            }
+            if (providerOptions.providedBy && providerOptions.providedBy instanceof Injector) {
+                const injector = providerOptions.providedBy;
+                token.prototype[exports.InjectorSymbol] = injector;
+                injector.register({ type: token, useClass: token });
+                return injector.instantiateWithCache(token);
+            }
+        }
+        return this.parent.get(token);
+    }
+    create(token, ...args) {
+        const provider = this.providerMap.get(token) || { type: token, useClass: token };
+        let value;
+        switch (true) {
+            case provider.useValue !== undefined:
+                value = provider.useValue;
+                break;
+            case provider.useFactory !== undefined:
+                const deps = provider.deps ? provider.deps.map(token => this.get(token)) : [];
+                value = provider.useFactory.apply(null, deps);
+                break;
+            case provider.useClass !== undefined:
+                value = new provider.useClass(...args);
+                value[exports.InjectorSymbol] = this;
+                break;
+            default:
+                throwIfNotFound(token);
+        }
+        return value;
+    }
+    register(provider) {
+        if (Array.isArray(provider)) {
+            return provider.forEach(provider => this.register(provider));
+        }
+        if (typeof provider === 'function') {
+            this.providerMap.set(provider, { type: provider, useClass: provider });
+            return;
+        }
+        this.providerMap.set(provider.type, provider);
+    }
+    instantiateWithCache(token) {
+        if (this.cache.has(token)) {
+            return this.cache.get(token);
+        }
+        const value = this.create(token);
+        this.cache.set(token, value);
+        return value;
+    }
+}
+exports.Injector = Injector;
+class NullInjector {
+    constructor() {
+        this.root = true;
+    }
+    get(token) {
+        return this.create(token);
+    }
+    create(token) {
+        throwIfNotFound(token);
+        return;
+    }
+    has() {
+        return false;
+    }
+    register() { }
+}
+function throwIfNotFound(token) {
+    throw new Error(String(token.name || token) + ' not found');
+}
+function Inject(type) {
+    return (target, property) => {
+        Object.defineProperty(target, property, {
+            get() {
+                if (!type) {
+                    type = Reflect.getMetadata('design:type', target, property);
+                }
+                if (!type) {
+                    throw new Error('Type metadata not found. Did you forget to add @Injectable() to your class?');
+                }
+                const value = getInjectorFrom(this).get(type);
+                Object.defineProperty(this, property, { value });
+                return value;
+            },
+        });
+    };
+}
+exports.Inject = Inject;
+function Injectable(options) {
+    return (target) => {
+        Reflect.defineMetadata(INJECTABLE_META, options, target);
+    };
+}
+exports.Injectable = Injectable;
+function getInjectorFrom(target) {
+    return target[exports.InjectorSymbol];
+}
+exports.getInjectorFrom = getInjectorFrom;
+
+});
+
+unwrapExports(injector);
+var injector_1 = injector.getInjectorFrom;
+var injector_2 = injector.Injectable;
+var injector_3 = injector.Inject;
+var injector_4 = injector.Injector;
+var injector_5 = injector.InjectorSymbol;
+var injector_6 = injector.InjectableMetadataKey;
+
+var syntaxRules = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.cleanAttributeName = exports.SyntaxRules = void 0;
+
+
+let SyntaxRules = /** @class */ (() => {
+    let SyntaxRules = class SyntaxRules {
+        constructor() {
+            this.rules = [];
+        }
+        addRule(matcher, handler) {
+            this.rules.push({ matcher, handler });
+        }
+        match(changeDetector, executionContext, element, attribute) {
+            const value = element.getAttribute(attribute);
+            const sanitizedAttributeName = cleanAttributeName(attribute);
+            this.rules.forEach((rule) => rule.matcher(attribute, element) && rule.handler(changeDetector, executionContext, element, sanitizedAttributeName, value));
+        }
+    };
+    SyntaxRules = tslib_es6.__decorate([
+        injector.Injectable({ providedBy: 'root' })
+    ], SyntaxRules);
+    return SyntaxRules;
+})();
+exports.SyntaxRules = SyntaxRules;
+const cleanAttributeRe = /^[^a-z]|[^a-z]$/g;
+function cleanAttributeName(attribute) {
+    return attribute.replace(cleanAttributeRe, '');
+}
+exports.cleanAttributeName = cleanAttributeName;
+
+});
+
+unwrapExports(syntaxRules);
+var syntaxRules_1 = syntaxRules.cleanAttributeName;
+var syntaxRules_2 = syntaxRules.SyntaxRules;
+
+var registry = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ContainerRegistry = void 0;
+
+
+let ContainerRegistry = /** @class */ (() => {
+    let ContainerRegistry = class ContainerRegistry extends Map {
+    };
+    ContainerRegistry = tslib_es6.__decorate([
+        injector.Injectable()
+    ], ContainerRegistry);
+    return ContainerRegistry;
+})();
+exports.ContainerRegistry = ContainerRegistry;
+
+});
+
+unwrapExports(registry);
+var registry_1 = registry.ContainerRegistry;
+
+var inputs = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Input = exports.addInputWatchers = exports.getInputMetadata = exports.INPUTS_METADATA = void 0;
+exports.INPUTS_METADATA = 'inputs';
+function getInputMetadata(customElement) {
+    return Reflect.getMetadata(exports.INPUTS_METADATA, customElement) || [];
+}
+exports.getInputMetadata = getInputMetadata;
+function addInputWatchers(customElement, changeDetector) {
+    const inputs = getInputMetadata(customElement);
+    if (!inputs.length)
+        return;
+    let inputChanges = {};
+    let firstTime = true;
+    let hasChanges = false;
+    changeDetector.afterCheck((changes) => {
+        inputs.forEach(input => {
+            const change = changes[input.property];
+            if (change) {
+                hasChanges = true;
+                inputChanges[input.property] = {
+                    value: change.value,
+                    lastValue: change.lastValue,
+                    firstTime,
+                };
+            }
+        });
+        if (!hasChanges)
+            return;
+        customElement.onChanges(changes);
+        firstTime = false;
+        inputChanges = {};
+        hasChanges = false;
+    });
+}
+exports.addInputWatchers = addInputWatchers;
+function Input(options) {
+    return (target, property) => {
+        const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, target) || [];
+        inputs.push({
+            property,
+            options,
+        });
+        Reflect.defineMetadata(exports.INPUTS_METADATA, inputs, target);
+    };
+}
+exports.Input = Input;
+
+});
+
+unwrapExports(inputs);
+var inputs_1 = inputs.Input;
+var inputs_2 = inputs.addInputWatchers;
+var inputs_3 = inputs.getInputMetadata;
+var inputs_4 = inputs.INPUTS_METADATA;
+
+var domHelpers = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DomHelpers = void 0;
+
+
+
+
+
+let DomHelpers = /** @class */ (() => {
+    let DomHelpers = class DomHelpers {
+        constructor() {
+            this.knownProperties = {};
+        }
+        watchExpressionAndUpdateProperty(changeDetector, executionContext, element, property, expression) {
+            const transformedProperty = this.findElementProperty(element, property);
+            const valueGetter = () => executionContext.run(expression);
+            const isTemplate = element.nodeName === 'TEMPLATE';
+            changeDetector.watch({
+                expression: valueGetter,
+                callback: (value) => (isTemplate && element.container || element)[transformedProperty] = value,
+                name: property,
+            });
+        }
+        watchExpressionAndSetAttribute(changeDetector, executionContext, element, property, expression) {
+            const valueGetter = () => executionContext.run(expression);
+            changeDetector.watch({
+                expression: valueGetter,
+                callback: (value) => element.setAttribute(property, value),
+                name: property
+            });
+        }
+        watchExpressionAndChangeClassName(changeDetector, executionContext, element, property, expression) {
+            const valueGetter = () => executionContext.run(expression);
+            const className = property.slice(6);
+            changeDetector.watch(valueGetter, (value) => value ?
+                element.classList.add(className) :
+                element.classList.remove(className));
+        }
+        readReferences(_, executionContext, element, attribute, __) {
+            executionContext.addLocals({ [attribute]: element });
+        }
+        createContainerForTemplate(changeDetector, executionContext, element, property, _) {
+            const container = element.container = this.createContainerByName(property, element, changeDetector, executionContext);
+            inputs.addInputWatchers(container, changeDetector);
+        }
+        findElementProperty(element, attributeName) {
+            if (this.knownProperties[attributeName]) {
+                return this.knownProperties[attributeName];
+            }
+            if (attributeName in element) {
+                return attributeName;
+            }
+            for (const elementProperty in element) {
+                if (elementProperty.toLowerCase() === attributeName) {
+                    this.knownProperties[attributeName] = elementProperty;
+                    return elementProperty;
+                }
+            }
+            return attributeName;
+        }
+        createContainerByName(containerName, template, changeDetector, executionContext) {
+            if (this.containerRegistry.has(containerName)) {
+                return this.injector.create(this.containerRegistry.get(containerName), template, changeDetector, executionContext);
+            }
+        }
+        compileElement(element, changeDetector, executionContext) {
+            if (element.nodeType !== element.ELEMENT_NODE)
+                return;
+            element.getAttributeNames().forEach(attribute => this.syntaxRules.match(changeDetector, executionContext, element, attribute));
+        }
+        compileTree(elementOrShadowRoot, changeDetector, executionContext) {
+            var _a, _b;
+            const nodeType = elementOrShadowRoot.nodeType;
+            if ((_a = elementOrShadowRoot.children) === null || _a === void 0 ? void 0 : _a.length) {
+                Array.from(elementOrShadowRoot.children).forEach((e) => this.compileTree(e, changeDetector, executionContext));
+            }
+            const isNotElementOrDocument = nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE;
+            const isShadowRoot = elementOrShadowRoot.getAttributeNames === undefined;
+            const isInsideTemplate = ((_b = elementOrShadowRoot.parentNode) === null || _b === void 0 ? void 0 : _b.nodeName) === 'TEMPLATE';
+            if (isNotElementOrDocument || isShadowRoot || isInsideTemplate)
+                return;
+            this.compileElement(elementOrShadowRoot, changeDetector, executionContext);
+        }
+    };
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", injector.Injector)
+    ], DomHelpers.prototype, "injector", void 0);
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", syntaxRules.SyntaxRules)
+    ], DomHelpers.prototype, "syntaxRules", void 0);
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", registry.ContainerRegistry)
+    ], DomHelpers.prototype, "containerRegistry", void 0);
+    DomHelpers = tslib_es6.__decorate([
+        injector.Injectable()
+    ], DomHelpers);
+    return DomHelpers;
+})();
+exports.DomHelpers = DomHelpers;
+
+});
+
+unwrapExports(domHelpers);
+var domHelpers_1 = domHelpers.DomHelpers;
 
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 function isFunction(x) {
@@ -7782,7 +7959,7 @@ var _esm5 = /*#__PURE__*/Object.freeze({
 
 var events = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.attachEvent = exports.EventEmitter = exports.Output = exports.DomEventEmitter = void 0;
+exports.addEventHandler = exports.EventEmitter = exports.Output = exports.DomEventEmitter = void 0;
 
 class DomEventEmitter {
     constructor(element, event) {
@@ -7825,192 +8002,38 @@ function Output(eventName) {
 }
 exports.Output = Output;
 exports.EventEmitter = ClassEventEmitter;
-function attachEvent(cd, element, eventNameAndSuffix, expression) {
+function addEventHandler(cd, executionContext, element, eventNameAndSuffix, expression) {
+    const eventHandler = ($event) => executionContext.run(expression, { $event });
     const [eventName, suffix] = eventNameAndSuffix.split('.');
     const useCapture = eventName === 'focus' || eventName === 'blur';
-    const handler = (event) => cd.run(() => {
+    const callback = (event) => cd.run(() => {
         if (suffix === 'once') {
-            element.removeEventListener(eventName, handler, { capture: useCapture });
+            element.removeEventListener(eventName, callback, { capture: useCapture });
         }
         if (suffix === 'stop') {
             event.preventDefault();
             event.stopPropagation();
         }
-        expression.apply(element, [event]);
+        eventHandler.apply(element, [event]);
         cd.markForCheck();
         cd.scheduleCheck();
     });
-    element.addEventListener(eventName, handler, { capture: useCapture });
+    element.addEventListener(eventName, callback, { capture: useCapture });
 }
-exports.attachEvent = attachEvent;
+exports.addEventHandler = addEventHandler;
 
 });
 
 unwrapExports(events);
-var events_1 = events.attachEvent;
+var events_1 = events.addEventHandler;
 var events_2 = events.EventEmitter;
 var events_3 = events.Output;
 var events_4 = events.DomEventEmitter;
 
-var compileElement_1 = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.findElementProperty = exports.watchAttribute = exports.watchProperty = exports.compileElement = void 0;
-
-function compileElement(element, changeDetector, executionContext) {
-    if (element.nodeType !== element.ELEMENT_NODE)
-        return;
-    element.getAttributeNames().forEach(attribute => {
-        const value = element.getAttribute(attribute);
-        const firstCharacter = attribute[0];
-        const unwrappedAttribute = attribute.slice(1, -1);
-        const unprefixedAttribute = attribute.slice(1);
-        switch (firstCharacter) {
-            case '(':
-                const eventHandler = ($event) => executionContext.run(value, { $event });
-                events.attachEvent(changeDetector, element, unwrappedAttribute, eventHandler);
-                break;
-            case '[':
-                watchProperty(changeDetector, executionContext, element, unwrappedAttribute, value);
-                break;
-            case '@':
-                watchAttribute(changeDetector, executionContext, element, unprefixedAttribute, value);
-                break;
-        }
-    });
-}
-exports.compileElement = compileElement;
-function watchProperty(changeDetector, executionContext, element, property, expression) {
-    const transformedProperty = findElementProperty(element, property);
-    const valueGetter = () => executionContext.run(expression);
-    changeDetector.watch(valueGetter, (value) => element[transformedProperty] = value);
-}
-exports.watchProperty = watchProperty;
-function watchAttribute(changeDetector, executionContext, element, property, expression) {
-    const valueGetter = () => executionContext.run(expression);
-    changeDetector.watch(valueGetter, (value) => element.setAttribute(property, value));
-}
-exports.watchAttribute = watchAttribute;
-const knownProperties = {};
-function findElementProperty(element, attributeName) {
-    if (knownProperties[attributeName]) {
-        return knownProperties[attributeName];
-    }
-    if (attributeName in element) {
-        return attributeName;
-    }
-    for (const elementProperty in element) {
-        if (elementProperty.toLowerCase() === attributeName) {
-            knownProperties[attributeName] = elementProperty;
-            return elementProperty;
-        }
-    }
-    return attributeName;
-}
-exports.findElementProperty = findElementProperty;
-
-});
-
-unwrapExports(compileElement_1);
-var compileElement_2 = compileElement_1.findElementProperty;
-var compileElement_3 = compileElement_1.watchAttribute;
-var compileElement_4 = compileElement_1.watchProperty;
-var compileElement_5 = compileElement_1.compileElement;
-
-var compileTree_1 = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.readReferences = exports.compileTree = void 0;
-
-
-function compileTree(elementOrShadowRoot, changeDetector, executionContext) {
-    const nodeType = elementOrShadowRoot.nodeType;
-    if (nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE)
-        return;
-    if (elementOrShadowRoot.children.length) {
-        Array.from(elementOrShadowRoot.children).forEach((e) => compileTree(e, changeDetector, executionContext));
-    }
-    // skip if is a shadowRoot
-    if ('getAttributeNames' in elementOrShadowRoot === false)
-        return;
-    // skip compilation of nodes inside templates
-    if (elementOrShadowRoot.parentNode.nodeName === 'TEMPLATE')
-        return;
-    readReferences(elementOrShadowRoot, executionContext);
-    if (elementOrShadowRoot.nodeName === 'TEMPLATE') {
-        compileTemplate_1.compileTemplate(elementOrShadowRoot, changeDetector, executionContext);
-        return;
-    }
-    compileElement_1.compileElement(elementOrShadowRoot, changeDetector, executionContext);
-}
-exports.compileTree = compileTree;
-function readReferences(element, executionContext) {
-    element.getAttributeNames().forEach(attribute => {
-        if (attribute[0] === '#') {
-            executionContext.addLocals({ [attribute.slice(1)]: element });
-        }
-    });
-}
-exports.readReferences = readReferences;
-
-});
-
-unwrapExports(compileTree_1);
-var compileTree_2 = compileTree_1.readReferences;
-var compileTree_3 = compileTree_1.compileTree;
-
-var inputs = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Input = exports.addInputWatchers = exports.INPUTS_METADATA = void 0;
-exports.INPUTS_METADATA = 'inputs';
-function addInputWatchers(customElement, changeDetector) {
-    const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, customElement) || [];
-    if (!inputs.length)
-        return;
-    let changes = {};
-    let firstTime = true;
-    let hasChanges = false;
-    inputs.forEach(input => {
-        var _a;
-        changeDetector.watch(() => customElement[input.property], (value, lastValue) => {
-            hasChanges = true;
-            changes[input.property] = {
-                value,
-                lastValue,
-                firstTime,
-            };
-        }, (_a = input.options) === null || _a === void 0 ? void 0 : _a.useEquals);
-    });
-    changeDetector.afterCheck(() => {
-        if (!hasChanges)
-            return;
-        customElement.onChanges(changes);
-        firstTime = false;
-        changes = {};
-        hasChanges = false;
-    });
-}
-exports.addInputWatchers = addInputWatchers;
-function Input(options) {
-    return (target, property) => {
-        const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, target) || [];
-        inputs.push({
-            property,
-            options,
-        });
-        Reflect.defineMetadata(exports.INPUTS_METADATA, inputs, target);
-    };
-}
-exports.Input = Input;
-
-});
-
-unwrapExports(inputs);
-var inputs_1 = inputs.Input;
-var inputs_2 = inputs.addInputWatchers;
-var inputs_3 = inputs.INPUTS_METADATA;
-
 var ifContainer = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IfContainer = void 0;
+
 
 
 
@@ -8031,19 +8054,23 @@ let IfContainer = /** @class */ (() => {
             else if (this.else) {
                 this.createNodes(this.else);
             }
+            else {
+                this.removeNodes();
+            }
         }
         createNodes(template) {
             const templateNodes = Array.from(template.content.childNodes);
             const fragment = document.createDocumentFragment();
             const nodes = templateNodes.map(n => n.cloneNode(true));
-            this.nodes = nodes;
             fragment.append(...nodes);
-            nodes.forEach(node => compileTree_1.compileTree(node, this.changeDetector, this.executionContext));
+            nodes.forEach(node => this.dom.compileTree(node, this.changeDetector, this.executionContext));
+            this.changeDetector.markForCheck();
+            this.changeDetector.scheduleCheck();
             utils.setTimeoutNative(() => {
-                this.changeDetector.markForCheck();
-                this.changeDetector.scheduleCheck();
-            });
-            utils.setTimeoutNative(() => this.template.parentNode.appendChild(fragment), 5);
+                this.removeNodes();
+                this.nodes = nodes;
+                this.template.parentNode.appendChild(fragment);
+            }, 2);
         }
         removeNodes() {
             this.nodes.forEach(node => node.parentNode.removeChild(node));
@@ -8058,6 +8085,10 @@ let IfContainer = /** @class */ (() => {
         inputs.Input(),
         tslib_es6.__metadata("design:type", HTMLTemplateElement)
     ], IfContainer.prototype, "else", void 0);
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", domHelpers.DomHelpers)
+    ], IfContainer.prototype, "dom", void 0);
     return IfContainer;
 })();
 exports.IfContainer = IfContainer;
@@ -8070,6 +8101,7 @@ var ifContainer_1 = ifContainer.IfContainer;
 var forContainer = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ForContainer = void 0;
+
 
 
 
@@ -8091,7 +8123,6 @@ let ForContainer = /** @class */ (() => {
             const templateNodes = Array.from(this.template.content.children);
             const fragment = document.createDocumentFragment();
             const allNodes = [];
-            this.removeNodes();
             const children = items.map((item, index) => {
                 const context = this.executionContext.fork();
                 const nodes = templateNodes.map(n => n.cloneNode(true));
@@ -8100,13 +8131,14 @@ let ForContainer = /** @class */ (() => {
                 fragment.append(...nodes);
                 return { nodes, context };
             });
-            this.nodes = allNodes;
-            children.forEach((o) => o.nodes.forEach(node => compileTree_1.compileTree(node, changeDetector, o.context)));
+            children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node, changeDetector, o.context)));
+            changeDetector.markForCheck();
+            changeDetector.scheduleCheck();
             utils.setTimeoutNative(() => {
-                changeDetector.markForCheck();
-                changeDetector.scheduleCheck();
-            });
-            utils.setTimeoutNative(() => this.template.parentNode.appendChild(fragment), 5);
+                this.removeNodes();
+                this.nodes = allNodes;
+                this.template.parentNode.appendChild(fragment);
+            }, 2);
         }
         removeNodes() {
             this.nodes.forEach(node => node.parentNode.removeChild(node));
@@ -8121,6 +8153,10 @@ let ForContainer = /** @class */ (() => {
         inputs.Input(),
         tslib_es6.__metadata("design:type", String)
     ], ForContainer.prototype, "for", void 0);
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", domHelpers.DomHelpers)
+    ], ForContainer.prototype, "dom", void 0);
     return ForContainer;
 })();
 exports.ForContainer = ForContainer;
@@ -8130,65 +8166,118 @@ exports.ForContainer = ForContainer;
 unwrapExports(forContainer);
 var forContainer_1 = forContainer.ForContainer;
 
-var compileTemplate_1 = createCommonjsModule(function (module, exports) {
+var application = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.compileTemplate = void 0;
+exports.Application = exports.ApplicationRef = void 0;
 
 
 
-function compileTemplate(template, changeDetector, executionContext) {
-    let containerName;
-    let container;
-    const attributes = template.getAttributeNames().filter(attribute => {
-        if (attribute[0] === '*') {
-            containerName = attribute;
-            return false;
-        }
-        return true;
-    });
-    switch (containerName) {
-        case '*if':
-            container = new ifContainer.IfContainer(template, changeDetector, executionContext);
-            break;
-        case '*for':
-            container = new forContainer.ForContainer(template, changeDetector, executionContext);
-            break;
+
+
+
+
+
+exports.ApplicationRef = Symbol('ApplicationRef');
+class Application {
+    constructor(rootNode, providers) {
+        const injector$1 = rootNode[injector.InjectorSymbol] = new injector.Injector(null, providers);
+        this.changeDetector = injector$1.get(changeDetection.ChangeDetectorRef);
+        injector$1.register({ type: exports.ApplicationRef, useValue: this });
+        const syntaxRules$1 = injector$1.get(syntaxRules.SyntaxRules);
+        const domUtils = injector$1.get(domHelpers.DomHelpers);
+        const containerRegistry = injector$1.get(registry.ContainerRegistry);
+        syntaxRules$1.addRule(a => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
+        syntaxRules$1.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createContainerForTemplate.bind(domUtils));
+        syntaxRules$1.addRule(a => a.charAt(0) === '(', events.addEventHandler);
+        syntaxRules$1.addRule(a => a.charAt(0) === '[' || a.charAt(0) === '*', domUtils.watchExpressionAndUpdateProperty.bind(domUtils));
+        syntaxRules$1.addRule(a => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
+        syntaxRules$1.addRule(a => a.startsWith('class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
+        containerRegistry.set('if', ifContainer.IfContainer);
+        containerRegistry.set('for', forContainer.ForContainer);
     }
-    if (!container)
-        return;
-    inputs.addInputWatchers(container, changeDetector);
-    attributes.forEach(attribute => {
-        if (attribute[0] !== '[')
-            return;
-        const expression = template.getAttribute(attribute);
-        const unboxedAttribute = attribute.slice(1, -1);
-        changeDetector.watch(() => executionContext.run(expression), (value) => {
-            container[unboxedAttribute] = value;
-            changeDetector.markForCheck();
-        });
-    });
+    tick() {
+        this.changeDetector.scheduleCheck();
+    }
 }
-exports.compileTemplate = compileTemplate;
+exports.Application = Application;
 
 });
 
-unwrapExports(compileTemplate_1);
-var compileTemplate_2 = compileTemplate_1.compileTemplate;
+unwrapExports(application);
+var application_1 = application.Application;
+var application_2 = application.ApplicationRef;
+
+var bootstrap_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.domReady = exports.bootstrap = exports.BOOTSTRAP = void 0;
+
+
+class Bootstrap {
+    constructor() {
+        this.promise = new Promise((resolve) => this.resolve = resolve);
+    }
+    tick(app) {
+        this.resolve(app);
+    }
+    whenReady(fn) {
+        this.promise = this.promise.then(fn);
+    }
+}
+exports.BOOTSTRAP = new Bootstrap();
+function bootstrap(options) {
+    if (!options) {
+        const zoneChangeDetector = new changeDetection.ZoneChangeDetector();
+        options = {
+            rootNode: document.body,
+            providers: [
+                { type: changeDetection.ChangeDetectorRef, useValue: zoneChangeDetector },
+            ]
+        };
+    }
+    const { rootNode, providers } = options;
+    domReady().then(function () {
+        const app = new application.Application(rootNode || document.body, providers);
+        exports.BOOTSTRAP.whenReady(() => app.tick());
+        exports.BOOTSTRAP.tick(app);
+        return app;
+    }).catch(console.log);
+}
+exports.bootstrap = bootstrap;
+// Thanks @stimulus:
+// https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
+function domReady() {
+    return new Promise(resolve => {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', resolve);
+        }
+        else {
+            resolve();
+        }
+    });
+}
+exports.domReady = domReady;
+
+});
+
+unwrapExports(bootstrap_1);
+var bootstrap_2 = bootstrap_1.domReady;
+var bootstrap_3 = bootstrap_1.bootstrap;
+var bootstrap_4 = bootstrap_1.BOOTSTRAP;
 
 var executionContext = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExecutionContext = void 0;
+const expressionCache = new Map();
 class ExecutionContext {
     constructor(component, parent) {
         this.component = component;
         this.parent = parent;
-        this.locals = {};
     }
     addLocals(locals) {
-        Object.assign(this.locals, locals);
+        Object.assign(this.locals || (this.locals = {}), locals);
     }
-    fork(host) {
-        return new ExecutionContext(host || this.component, this);
+    fork(newContext) {
+        return new ExecutionContext(newContext || this.component, this);
     }
     run(expression, localValues) {
         const fn = this.compile(expression, localValues);
@@ -8202,15 +8291,21 @@ class ExecutionContext {
     compile(expression, localValues) {
         const locals = this.getLocals(localValues);
         const localsByName = Object.keys(locals);
+        const cacheKey = expression + localsByName;
+        if (!expressionCache.has(cacheKey)) {
+            expressionCache.set(cacheKey, Function(...localsByName, `return ${expression}`));
+        }
         const localsAsArray = localsByName.map(key => locals[key]);
-        return Function(...localsByName, `return ${expression}`).bind(this.component, ...localsAsArray);
+        return expressionCache.get(cacheKey).bind(this.component, ...localsAsArray);
     }
     getLocals(additionalValues) {
         const locals = {};
         if (this.parent) {
             Object.assign(locals, this.parent.getLocals());
         }
-        Object.assign(locals, this.locals);
+        if (this.locals) {
+            Object.assign(locals, this.locals);
+        }
         if (additionalValues) {
             Object.assign(locals, additionalValues);
         }
@@ -8253,9 +8348,10 @@ function createComponentClass(ComponentClass, options) {
                 const changeDetector = injector.get(changeDetection.ChangeDetectorRef);
                 const executionContext$1 = new executionContext.ExecutionContext(this);
                 injector.register({ type: executionContext.ExecutionContext, useValue: executionContext$1 });
+                const dom = injector.get(domHelpers.DomHelpers);
                 attachShadowDom(this, options);
                 addHostAttributes(this, options);
-                compileTree_1.compileTree(this.shadowRoot || this, changeDetector, executionContext$1);
+                dom.compileTree(this.shadowRoot || this, changeDetector, executionContext$1);
                 inputs.addInputWatchers(this, changeDetector);
                 changeDetector.scheduleCheck();
                 this.onInit();
@@ -8351,16 +8447,6 @@ Object.defineProperty(exports, "BaseChangeDetector", { enumerable: true, get: fu
 Object.defineProperty(exports, "ChangeDetectorRef", { enumerable: true, get: function () { return changeDetection.ChangeDetectorRef; } });
 Object.defineProperty(exports, "ZoneChangeDetector", { enumerable: true, get: function () { return changeDetection.ZoneChangeDetector; } });
 
-Object.defineProperty(exports, "compileElement", { enumerable: true, get: function () { return compileElement_1.compileElement; } });
-Object.defineProperty(exports, "findElementProperty", { enumerable: true, get: function () { return compileElement_1.findElementProperty; } });
-Object.defineProperty(exports, "watchAttribute", { enumerable: true, get: function () { return compileElement_1.watchAttribute; } });
-Object.defineProperty(exports, "watchProperty", { enumerable: true, get: function () { return compileElement_1.watchProperty; } });
-
-Object.defineProperty(exports, "compileTemplate", { enumerable: true, get: function () { return compileTemplate_1.compileTemplate; } });
-
-Object.defineProperty(exports, "compileTree", { enumerable: true, get: function () { return compileTree_1.compileTree; } });
-Object.defineProperty(exports, "readReferences", { enumerable: true, get: function () { return compileTree_1.readReferences; } });
-
 Object.defineProperty(exports, "addHostAttributes", { enumerable: true, get: function () { return component.addHostAttributes; } });
 Object.defineProperty(exports, "attachShadowDom", { enumerable: true, get: function () { return component.attachShadowDom; } });
 Object.defineProperty(exports, "Component", { enumerable: true, get: function () { return component.Component; } });
@@ -8369,6 +8455,11 @@ Object.defineProperty(exports, "createComponentInjector", { enumerable: true, ge
 Object.defineProperty(exports, "findParentComponent", { enumerable: true, get: function () { return component.findParentComponent; } });
 Object.defineProperty(exports, "TemplateRef", { enumerable: true, get: function () { return component.TemplateRef; } });
 
+Object.defineProperty(exports, "ContainerRegistry", { enumerable: true, get: function () { return registry.ContainerRegistry; } });
+
+Object.defineProperty(exports, "DomHelpers", { enumerable: true, get: function () { return domHelpers.DomHelpers; } });
+
+Object.defineProperty(exports, "addEventHandler", { enumerable: true, get: function () { return events.addEventHandler; } });
 Object.defineProperty(exports, "DomEventEmitter", { enumerable: true, get: function () { return events.DomEventEmitter; } });
 Object.defineProperty(exports, "EventEmitter", { enumerable: true, get: function () { return events.EventEmitter; } });
 Object.defineProperty(exports, "Output", { enumerable: true, get: function () { return events.Output; } });
@@ -8384,6 +8475,7 @@ Object.defineProperty(exports, "InjectorSymbol", { enumerable: true, get: functi
 Object.defineProperty(exports, "Input", { enumerable: true, get: function () { return inputs.Input; } });
 
 Object.defineProperty(exports, "createTemplateFromHtml", { enumerable: true, get: function () { return utils.createTemplateFromHtml; } });
+Object.defineProperty(exports, "noop", { enumerable: true, get: function () { return utils.noop; } });
 
 });
 
@@ -8396,31 +8488,28 @@ var src_5 = src.domReady;
 var src_6 = src.BaseChangeDetector;
 var src_7 = src.ChangeDetectorRef;
 var src_8 = src.ZoneChangeDetector;
-var src_9 = src.compileElement;
-var src_10 = src.findElementProperty;
-var src_11 = src.watchAttribute;
-var src_12 = src.watchProperty;
-var src_13 = src.compileTemplate;
-var src_14 = src.compileTree;
-var src_15 = src.readReferences;
-var src_16 = src.addHostAttributes;
-var src_17 = src.attachShadowDom;
-var src_18 = src.Component;
-var src_19 = src.createComponentClass;
-var src_20 = src.createComponentInjector;
-var src_21 = src.findParentComponent;
-var src_22 = src.TemplateRef;
-var src_23 = src.DomEventEmitter;
-var src_24 = src.EventEmitter;
-var src_25 = src.Output;
-var src_26 = src.ExecutionContext;
-var src_27 = src.getInjectorFrom;
-var src_28 = src.Inject;
-var src_29 = src.Injectable;
-var src_30 = src.Injector;
-var src_31 = src.InjectorSymbol;
-var src_32 = src.Input;
-var src_33 = src.createTemplateFromHtml;
+var src_9 = src.addHostAttributes;
+var src_10 = src.attachShadowDom;
+var src_11 = src.Component;
+var src_12 = src.createComponentClass;
+var src_13 = src.createComponentInjector;
+var src_14 = src.findParentComponent;
+var src_15 = src.TemplateRef;
+var src_16 = src.ContainerRegistry;
+var src_17 = src.DomHelpers;
+var src_18 = src.addEventHandler;
+var src_19 = src.DomEventEmitter;
+var src_20 = src.EventEmitter;
+var src_21 = src.Output;
+var src_22 = src.ExecutionContext;
+var src_23 = src.getInjectorFrom;
+var src_24 = src.Inject;
+var src_25 = src.Injectable;
+var src_26 = src.Injector;
+var src_27 = src.InjectorSymbol;
+var src_28 = src.Input;
+var src_29 = src.createTemplateFromHtml;
+var src_30 = src.noop;
 
 export default index;
-export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_6 as BaseChangeDetector, src_7 as ChangeDetectorRef, src_18 as Component, src_23 as DomEventEmitter, src_24 as EventEmitter, src_26 as ExecutionContext, src_28 as Inject, src_29 as Injectable, src_30 as Injector, src_31 as InjectorSymbol, src_32 as Input, src_25 as Output, src_22 as TemplateRef, src_8 as ZoneChangeDetector, src_16 as addHostAttributes, src_17 as attachShadowDom, src_3 as bootstrap, src_9 as compileElement, src_13 as compileTemplate, src_14 as compileTree, src_19 as createComponentClass, src_20 as createComponentInjector, src_33 as createTemplateFromHtml, src_5 as domReady, src_10 as findElementProperty, src_21 as findParentComponent, src_27 as getInjectorFrom, src_15 as readReferences, src_11 as watchAttribute, src_12 as watchProperty };
+export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_6 as BaseChangeDetector, src_7 as ChangeDetectorRef, src_11 as Component, src_16 as ContainerRegistry, src_19 as DomEventEmitter, src_17 as DomHelpers, src_20 as EventEmitter, src_22 as ExecutionContext, src_24 as Inject, src_25 as Injectable, src_26 as Injector, src_27 as InjectorSymbol, src_28 as Input, src_21 as Output, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_18 as addEventHandler, src_9 as addHostAttributes, src_10 as attachShadowDom, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_29 as createTemplateFromHtml, src_5 as domReady, src_14 as findParentComponent, src_23 as getInjectorFrom, src_30 as noop };

@@ -1,12 +1,14 @@
 import { ChangeDetector } from '../change-detection';
-import { compileTree } from '../compile-tree';
 import { ExecutionContext } from '../execution-context';
 import { Input } from '../inputs';
 import { setTimeoutNative } from '../utils';
+import { Inject } from '../injector';
+import { DomHelpers } from '../dom-helpers';
 
 export class ForContainer {
   @Input() of: Iterable<any>;
   @Input() for: string;
+  @Inject() dom: DomHelpers;
 
   private nodes: Node[] = [];
 
@@ -27,7 +29,6 @@ export class ForContainer {
     const fragment = document.createDocumentFragment();
     const allNodes = [];
 
-    this.removeNodes();
     const children = items.map((item, index) => {
       const context = this.executionContext.fork();
       const nodes = templateNodes.map(n => n.cloneNode(true));
@@ -39,15 +40,15 @@ export class ForContainer {
       return { nodes, context };
     });
 
-    this.nodes = allNodes;
+    children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node as HTMLElement, changeDetector, o.context)));
+    changeDetector.markForCheck();
+    changeDetector.scheduleCheck();
 
-    children.forEach((o) => o.nodes.forEach(node => compileTree(node as HTMLElement, changeDetector, o.context)));
     setTimeoutNative(() => {
-      changeDetector.markForCheck();
-      changeDetector.scheduleCheck();
-    });
-
-    setTimeoutNative(() => this.template.parentNode.appendChild(fragment), 5);
+      this.removeNodes();
+      this.nodes = allNodes;
+      this.template.parentNode.appendChild(fragment);
+    }, 2);
   }
 
   private removeNodes() {

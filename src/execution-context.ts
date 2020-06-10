@@ -1,9 +1,13 @@
+import { Fn } from './utils';
+
 export interface ExecutionLocals {
   [local: string]: any;
 }
 
+const expressionCache = new Map<string, Fn>();
+
 export class ExecutionContext {
-  locals: ExecutionLocals = {};
+  locals: ExecutionLocals;
 
   constructor(
     private component: HTMLElement,
@@ -11,11 +15,11 @@ export class ExecutionContext {
   ) {}
 
   addLocals(locals: ExecutionLocals) {
-    Object.assign(this.locals, locals);
+    Object.assign(this.locals || (this.locals = {}), locals);
   }
 
-  fork(host?: HTMLElement) {
-    return new ExecutionContext(host || this.component, this);
+  fork(newContext?: HTMLElement) {
+    return new ExecutionContext(newContext || this.component, this);
   }
 
   run(expression: string, localValues?: ExecutionLocals) {
@@ -30,9 +34,14 @@ export class ExecutionContext {
   compile(expression: string, localValues?: ExecutionLocals) {
     const locals = this.getLocals(localValues);
     const localsByName = Object.keys(locals);
-    const localsAsArray = localsByName.map(key => locals[key]);
+    const cacheKey = expression + localsByName;
 
-    return Function(...localsByName, `return ${expression}`).bind(this.component, ...localsAsArray);
+    if (!expressionCache.has(cacheKey)) {
+      expressionCache.set(cacheKey, Function(...localsByName, `return ${expression}`));
+    }
+
+    const localsAsArray = localsByName.map(key => locals[key]);
+    return expressionCache.get(cacheKey).bind(this.component, ...localsAsArray);
   }
 
   private getLocals(additionalValues?: ExecutionLocals) {
@@ -42,7 +51,9 @@ export class ExecutionContext {
       Object.assign(locals, this.parent.getLocals());
     }
 
-    Object.assign(locals, this.locals);
+    if (this.locals) {
+      Object.assign(locals, this.locals);
+    }
 
     if (additionalValues) {
       Object.assign(locals, additionalValues);
