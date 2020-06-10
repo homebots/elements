@@ -42,9 +42,9 @@ export class IfContainer {
     this.changeDetector.scheduleCheck();
 
     setTimeoutNative(() => {
+      this.template.parentNode.appendChild(fragment);
       this.removeNodes();
       this.nodes = nodes;
-      this.template.parentNode.appendChild(fragment);
     }, 2);
   }
 

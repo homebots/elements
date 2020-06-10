@@ -3661,8 +3661,8 @@ exports.ZoneChangeDetector = exports.BaseChangeDetector = exports.ChangeDetector
 let uid = 0;
 exports.ChangeDetectorRef = Symbol('ChangeDetector');
 class BaseChangeDetector {
-    constructor(component = null, parent = null) {
-        this.component = component;
+    constructor(target = null, parent = null) {
+        this.target = target;
         this.parent = parent;
         this.id = `@${++uid}`;
         this.children = new Map();
@@ -3670,21 +3670,20 @@ class BaseChangeDetector {
         this.state = 'dirty';
         this.watchers = [];
         this._afterCheck = [];
+        this._beforeCheck = [];
         if (this.parent) {
-            this.parent.children.set(this.component, this);
+            this.parent.children.set(this.target, this);
         }
     }
-    beforeCheck() {
-        if (this.component) {
-            this.component.onBeforeCheck();
-        }
+    beforeCheck(fn) {
+        this._beforeCheck.push(fn);
     }
     afterCheck(fn) {
         this._afterCheck.push(fn);
     }
     unregister() {
         if (this.parent) {
-            this.parent.children.delete(this.component);
+            this.parent.children.delete(this.target);
         }
     }
     run(callback, applyThis, applyArgs) {
@@ -3713,26 +3712,37 @@ class BaseChangeDetector {
     check() {
         if (this.state === 'checked')
             return;
-        this.beforeCheck();
+        let inputChanges = {};
+        let hasInputChanges = false;
+        this._beforeCheck.forEach(fn => fn(inputChanges));
         this.state = 'checking';
-        const changes = {};
         this.watchers.forEach(watcher => {
-            const newValue = this.run(watcher.expression, this.component, []);
+            var _a;
+            const newValue = this.run(watcher.expression, this.target, []);
             const lastValue = watcher.lastValue;
             const useEquals = watcher.useEquals;
             const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !lodash_isequal(newValue, lastValue));
             if (!hasChanges) {
                 return;
             }
-            if (watcher.name) {
-                changes[watcher.name] = { value: newValue, lastValue };
+            if ((_a = watcher.metadata) === null || _a === void 0 ? void 0 : _a.isInput) {
+                inputChanges[watcher.metadata.property] = {
+                    value: newValue,
+                    lastValue,
+                    firstTime: watcher.metadata.firstTime,
+                };
+                watcher.metadata.firstTime = false;
+                hasInputChanges = true;
             }
             if (watcher.callback) {
                 this.run(watcher.callback, null, [newValue, lastValue]);
             }
             watcher.lastValue = useEquals ? lodash_clone(newValue) : newValue;
         });
-        this.onAfterCheck(changes);
+        if (!hasInputChanges) {
+            inputChanges = null;
+        }
+        this._afterCheck.forEach(fn => fn(inputChanges));
         if (this.state !== 'checking') {
             this.scheduleCheck();
             return;
@@ -3752,11 +3762,10 @@ class BaseChangeDetector {
             this.timer = 0;
         }, 1);
     }
-    fork(component) {
-        return new BaseChangeDetector(component || this.component, this);
+    fork(target) {
+        return new BaseChangeDetector(target || this.target, this);
     }
     onAfterCheck(changes) {
-        this._afterCheck.forEach(fn => fn(changes));
     }
 }
 exports.BaseChangeDetector = BaseChangeDetector;
@@ -4213,7 +4222,12 @@ let SyntaxRules = /** @class */ (() => {
         match(changeDetector, executionContext, element, attribute) {
             const value = element.getAttribute(attribute);
             const sanitizedAttributeName = cleanAttributeName(attribute);
-            this.rules.forEach((rule) => rule.matcher(attribute, element) && rule.handler(changeDetector, executionContext, element, sanitizedAttributeName, value));
+            this.rules.forEach((rule) => {
+                if (rule.matcher(attribute, element)) {
+                    element.removeAttribute(attribute);
+                    rule.handler(changeDetector, executionContext, element, sanitizedAttributeName, value);
+                }
+            });
         }
     };
     SyntaxRules = tslib_es6.__decorate([
@@ -4256,40 +4270,12 @@ var registry_1 = registry.ContainerRegistry;
 
 var inputs = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Input = exports.addInputWatchers = exports.getInputMetadata = exports.INPUTS_METADATA = void 0;
+exports.Input = exports.getInputMetadata = exports.INPUTS_METADATA = void 0;
 exports.INPUTS_METADATA = 'inputs';
 function getInputMetadata(customElement) {
     return Reflect.getMetadata(exports.INPUTS_METADATA, customElement) || [];
 }
 exports.getInputMetadata = getInputMetadata;
-function addInputWatchers(customElement, changeDetector) {
-    const inputs = getInputMetadata(customElement);
-    if (!inputs.length)
-        return;
-    let inputChanges = {};
-    let firstTime = true;
-    let hasChanges = false;
-    changeDetector.afterCheck((changes) => {
-        inputs.forEach(input => {
-            const change = changes[input.property];
-            if (change) {
-                hasChanges = true;
-                inputChanges[input.property] = {
-                    value: change.value,
-                    lastValue: change.lastValue,
-                    firstTime,
-                };
-            }
-        });
-        if (!hasChanges)
-            return;
-        customElement.onChanges(changes);
-        firstTime = false;
-        inputChanges = {};
-        hasChanges = false;
-    });
-}
-exports.addInputWatchers = addInputWatchers;
 function Input(options) {
     return (target, property) => {
         const inputs = Reflect.getMetadata(exports.INPUTS_METADATA, target) || [];
@@ -4306,31 +4292,52 @@ exports.Input = Input;
 
 unwrapExports(inputs);
 var inputs_1 = inputs.Input;
-var inputs_2 = inputs.addInputWatchers;
-var inputs_3 = inputs.getInputMetadata;
-var inputs_4 = inputs.INPUTS_METADATA;
+var inputs_2 = inputs.getInputMetadata;
+var inputs_3 = inputs.INPUTS_METADATA;
 
 var domHelpers = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DomHelpers = void 0;
+exports.DomHelpers = exports.TemplateContainer = void 0;
 
 
 
 
 
+class TemplateContainer {
+    onChanges(changes) {
+        if (this.target) {
+            this.target.onChanges(changes);
+        }
+    }
+    setProperty(property, value) {
+        if (this.target) {
+            this.target[property] = value;
+        }
+    }
+}
+exports.TemplateContainer = TemplateContainer;
+const TEMPLATE_NODE = 'TEMPLATE';
 let DomHelpers = /** @class */ (() => {
     let DomHelpers = class DomHelpers {
         constructor() {
             this.knownProperties = {};
         }
         watchExpressionAndUpdateProperty(changeDetector, executionContext, element, property, expression) {
+            const isTemplate = element.nodeName === TEMPLATE_NODE;
             const transformedProperty = this.findElementProperty(element, property);
+            const inputProperties = inputs.getInputMetadata(isTemplate ? element.container.target : element);
+            const isInput = inputProperties.filter(i => i.property === transformedProperty).length > 0;
             const valueGetter = () => executionContext.run(expression);
-            const isTemplate = element.nodeName === 'TEMPLATE';
             changeDetector.watch({
                 expression: valueGetter,
-                callback: (value) => (isTemplate && element.container || element)[transformedProperty] = value,
-                name: property,
+                callback: (value) => {
+                    if (isTemplate) {
+                        element.container.setProperty(transformedProperty, value);
+                        return;
+                    }
+                    element[transformedProperty] = value;
+                },
+                metadata: { property, isInput, firstTime: true },
             });
         }
         watchExpressionAndSetAttribute(changeDetector, executionContext, element, property, expression) {
@@ -4338,7 +4345,6 @@ let DomHelpers = /** @class */ (() => {
             changeDetector.watch({
                 expression: valueGetter,
                 callback: (value) => element.setAttribute(property, value),
-                name: property
             });
         }
         watchExpressionAndChangeClassName(changeDetector, executionContext, element, property, expression) {
@@ -4351,9 +4357,8 @@ let DomHelpers = /** @class */ (() => {
         readReferences(_, executionContext, element, attribute, __) {
             executionContext.addLocals({ [attribute]: element });
         }
-        createContainerForTemplate(changeDetector, executionContext, element, property, _) {
-            const container = element.container = this.createContainerByName(property, element, changeDetector, executionContext);
-            inputs.addInputWatchers(container, changeDetector);
+        createTemplateContainerTarget(changeDetector, executionContext, element, containerName, _) {
+            element.container.target = this.createContainerByName(containerName, element, changeDetector, executionContext);
         }
         findElementProperty(element, attributeName) {
             if (this.knownProperties[attributeName]) {
@@ -4378,6 +4383,11 @@ let DomHelpers = /** @class */ (() => {
         compileElement(element, changeDetector, executionContext) {
             if (element.nodeType !== element.ELEMENT_NODE)
                 return;
+            if (element.nodeName === TEMPLATE_NODE) {
+                const container = element.container = new TemplateContainer();
+                changeDetector = changeDetector.fork(container);
+                changeDetector.afterCheck(changes => changes && container.onChanges(changes));
+            }
             element.getAttributeNames().forEach(attribute => this.syntaxRules.match(changeDetector, executionContext, element, attribute));
         }
         compileTree(elementOrShadowRoot, changeDetector, executionContext) {
@@ -4388,7 +4398,7 @@ let DomHelpers = /** @class */ (() => {
             }
             const isNotElementOrDocument = nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE;
             const isShadowRoot = elementOrShadowRoot.getAttributeNames === undefined;
-            const isInsideTemplate = ((_b = elementOrShadowRoot.parentNode) === null || _b === void 0 ? void 0 : _b.nodeName) === 'TEMPLATE';
+            const isInsideTemplate = ((_b = elementOrShadowRoot.parentNode) === null || _b === void 0 ? void 0 : _b.nodeName) === TEMPLATE_NODE;
             if (isNotElementOrDocument || isShadowRoot || isInsideTemplate)
                 return;
             this.compileElement(elementOrShadowRoot, changeDetector, executionContext);
@@ -4417,6 +4427,7 @@ exports.DomHelpers = DomHelpers;
 
 unwrapExports(domHelpers);
 var domHelpers_1 = domHelpers.DomHelpers;
+var domHelpers_2 = domHelpers.TemplateContainer;
 
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 function isFunction(x) {
@@ -8067,9 +8078,9 @@ let IfContainer = /** @class */ (() => {
             this.changeDetector.markForCheck();
             this.changeDetector.scheduleCheck();
             utils.setTimeoutNative(() => {
+                this.template.parentNode.appendChild(fragment);
                 this.removeNodes();
                 this.nodes = nodes;
-                this.template.parentNode.appendChild(fragment);
             }, 2);
         }
         removeNodes() {
@@ -8187,11 +8198,11 @@ class Application {
         const domUtils = injector$1.get(domHelpers.DomHelpers);
         const containerRegistry = injector$1.get(registry.ContainerRegistry);
         syntaxRules$1.addRule(a => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
-        syntaxRules$1.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createContainerForTemplate.bind(domUtils));
+        syntaxRules$1.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createTemplateContainerTarget.bind(domUtils));
         syntaxRules$1.addRule(a => a.charAt(0) === '(', events.addEventHandler);
         syntaxRules$1.addRule(a => a.charAt(0) === '[' || a.charAt(0) === '*', domUtils.watchExpressionAndUpdateProperty.bind(domUtils));
         syntaxRules$1.addRule(a => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
-        syntaxRules$1.addRule(a => a.startsWith('class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
+        syntaxRules$1.addRule(a => a.startsWith('[class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
         containerRegistry.set('if', ifContainer.IfContainer);
         containerRegistry.set('for', forContainer.ForContainer);
     }
@@ -8329,7 +8340,6 @@ exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInj
 
 
 
-
 exports.TemplateRef = Symbol('TemplateRef');
 function Component(options) {
     return function (ComponentClass) {
@@ -8352,7 +8362,8 @@ function createComponentClass(ComponentClass, options) {
                 attachShadowDom(this, options);
                 addHostAttributes(this, options);
                 dom.compileTree(this.shadowRoot || this, changeDetector, executionContext$1);
-                inputs.addInputWatchers(this, changeDetector);
+                changeDetector.beforeCheck(() => this.onBeforeCheck());
+                changeDetector.afterCheck(changes => changes && this.onChanges(changes));
                 changeDetector.scheduleCheck();
                 this.onInit();
             }

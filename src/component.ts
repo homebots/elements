@@ -3,7 +3,6 @@ import { BOOTSTRAP } from './bootstrap';
 import { ChangeDetectorRef, Changes } from './change-detection';
 import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
-import { addInputWatchers } from './inputs';
 import { createTemplateFromHtml, noop } from './utils';
 import { DomHelpers } from './dom-helpers';
 
@@ -87,9 +86,11 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
         attachShadowDom(this, options);
         addHostAttributes(this, options);
         dom.compileTree(this.shadowRoot || this, changeDetector, executionContext);
-        addInputWatchers(this, changeDetector);
 
+        changeDetector.beforeCheck(() => this.onBeforeCheck());
+        changeDetector.afterCheck(changes => changes && this.onChanges(changes));
         changeDetector.scheduleCheck();
+
         this.onInit();
       } catch (error) {
         console.log(error);

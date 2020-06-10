@@ -1,11 +1,31 @@
-import { ChangeDetector } from './change-detection';
+import { ChangeDetector, Changes } from './change-detection';
 import { ExecutionContext } from './execution-context';
 import { Injectable, Injector, Inject } from './injector';
 import { SyntaxRules } from './syntax-rules';
 import { ContainerRegistry } from './containers/registry';
-import { addInputWatchers } from './inputs';
+import { getInputMetadata } from './inputs';
+import { OnChanges } from './component';
 
-type HTMLElementWitContainer<T extends HTMLElement> = T & { container: object };
+export type ContainerTarget = object & OnChanges;
+
+export class TemplateContainer {
+  target: ContainerTarget;
+
+  onChanges(changes: Changes) {
+    if (this.target) {
+      this.target.onChanges(changes);
+    }
+  }
+
+  setProperty(property: string, value: any): void {
+    if (this.target) {
+      this.target[property] = value;
+    }
+  }
+}
+
+type HTMLElementWitContainer<T extends HTMLElement> = T & { container: TemplateContainer };
+const TEMPLATE_NODE = 'TEMPLATE';
 
 @Injectable()
 export class DomHelpers {
@@ -20,14 +40,24 @@ export class DomHelpers {
     property: string,
     expression: string
   ) {
+    const isTemplate = element.nodeName === TEMPLATE_NODE;
     const transformedProperty = this.findElementProperty(element, property);
+    const inputProperties = getInputMetadata(isTemplate ? element.container.target : element);
+    const isInput = inputProperties.filter(i => i.property === transformedProperty).length > 0;
     const valueGetter = () => executionContext.run(expression);
-    const isTemplate = element.nodeName === 'TEMPLATE';
 
     changeDetector.watch({
       expression: valueGetter,
-      callback: (value: any) => (isTemplate && element.container || element)[transformedProperty] = value,
-      name: property,
+      callback: (value: any) => {
+        if (isTemplate) {
+          element.container.setProperty(transformedProperty, value);
+          return;
+        }
+
+        element[transformedProperty] = value;
+      },
+
+      metadata: { property, isInput, firstTime: true },
     });
   }
 
@@ -42,7 +72,6 @@ export class DomHelpers {
     changeDetector.watch({
       expression: valueGetter,
       callback: (value: any) => element.setAttribute(property, value),
-      name: property
     });
   }
 
@@ -72,15 +101,14 @@ export class DomHelpers {
     executionContext.addLocals({ [attribute]: element });
   }
 
-  createContainerForTemplate(
+  createTemplateContainerTarget(
     changeDetector: ChangeDetector,
     executionContext: ExecutionContext,
     element: HTMLElementWitContainer<HTMLTemplateElement>,
-    property: string,
+    containerName: string,
     _: string,
   ) {
-    const container = (element as any).container = this.createContainerByName(property, element, changeDetector, executionContext);
-    addInputWatchers(container as any, changeDetector);
+    element.container.target = this.createContainerByName(containerName, element, changeDetector, executionContext);
   }
 
   knownProperties: { [key: string]: string } = {};
@@ -106,12 +134,18 @@ export class DomHelpers {
 
   createContainerByName(containerName: string, template: HTMLTemplateElement, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
     if (this.containerRegistry.has(containerName)) {
-      return this.injector.create(this.containerRegistry.get(containerName), template, changeDetector, executionContext);
+      return this.injector.create(this.containerRegistry.get(containerName), template, changeDetector, executionContext) as OnChanges;
     }
   }
 
   compileElement(element: HTMLElement, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
     if (element.nodeType !== element.ELEMENT_NODE) return;
+
+    if (element.nodeName === TEMPLATE_NODE) {
+      const container = (element as any).container = new TemplateContainer();
+      changeDetector = changeDetector.fork(container);
+      changeDetector.afterCheck(changes => changes && container.onChanges(changes));
+    }
 
     element.getAttributeNames().forEach(attribute => this.syntaxRules.match(changeDetector, executionContext, element, attribute));
   }
@@ -129,7 +163,7 @@ export class DomHelpers {
 
     const isNotElementOrDocument = nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE;
     const isShadowRoot = (elementOrShadowRoot as HTMLElement).getAttributeNames === undefined;
-    const isInsideTemplate = elementOrShadowRoot.parentNode?.nodeName === 'TEMPLATE';
+    const isInsideTemplate = elementOrShadowRoot.parentNode?.nodeName === TEMPLATE_NODE;
 
     if (isNotElementOrDocument || isShadowRoot || isInsideTemplate) return;
 

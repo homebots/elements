@@ -23,11 +23,11 @@ export class Application {
     const containerRegistry = injector.get(ContainerRegistry);
 
     syntaxRules.addRule(a => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
-    syntaxRules.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createContainerForTemplate.bind(domUtils));
+    syntaxRules.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createTemplateContainerTarget.bind(domUtils));
     syntaxRules.addRule(a => a.charAt(0) === '(', addEventHandler);
     syntaxRules.addRule(a => a.charAt(0) === '[' || a.charAt(0) === '*', domUtils.watchExpressionAndUpdateProperty.bind(domUtils));
     syntaxRules.addRule(a => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
-    syntaxRules.addRule(a => a.startsWith('class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
+    syntaxRules.addRule(a => a.startsWith('[class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
 
     containerRegistry.set('if', IfContainer);
     containerRegistry.set('for', ForContainer);

@@ -22,7 +22,12 @@ export class SyntaxRules {
     const value = element.getAttribute(attribute);
     const sanitizedAttributeName = cleanAttributeName(attribute);
 
-    this.rules.forEach((rule) => rule.matcher(attribute, element) && rule.handler(changeDetector, executionContext, element, sanitizedAttributeName, value));
+    this.rules.forEach((rule) => {
+      if (rule.matcher(attribute, element)) {
+        element.removeAttribute(attribute);
+        rule.handler(changeDetector, executionContext, element, sanitizedAttributeName, value);
+      }
+    });
   }
 }
 

@@ -23,7 +23,11 @@ export interface Watcher {
   callback?: ChangeCallback<unknown>;
   lastValue?: any;
   useEquals?: boolean;
-  name?: string;
+  metadata?: {
+    property: string,
+    isInput: boolean;
+    firstTime: boolean;
+  };
 }
 
 let uid = 0;
@@ -34,7 +38,7 @@ export interface ChangeDetector {
   id?: string;
   parent?: ChangeDetector;
 
-  beforeCheck(): void;
+  beforeCheck(fn: AnyFunction): void;
   afterCheck(fn: AnyFunction): void;
 
   markForCheck(): void;
@@ -45,7 +49,7 @@ export interface ChangeDetector {
   watch<T>(expression: Watcher | Expression<T>): void;
   watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
-  fork(component?: CustomElement): ChangeDetector;
+  fork(target?: any): ChangeDetector;
 }
 
 export class BaseChangeDetector implements ChangeDetector {
@@ -56,20 +60,19 @@ export class BaseChangeDetector implements ChangeDetector {
   protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
   private watchers: Watcher[] = [];
   private _afterCheck: AnyFunction[] = [];
+  private _beforeCheck: AnyFunction[] = [];
 
   constructor(
-    protected component: CustomElement = null,
+    protected target: CustomElement = null,
     public parent: BaseChangeDetector = null,
   ) {
     if (this.parent) {
-      this.parent.children.set(this.component, this);
+      this.parent.children.set(this.target, this);
     }
   }
 
-  beforeCheck() {
-    if (this.component) {
-      (this.component as any).onBeforeCheck();
-    }
+  beforeCheck(fn: AnyFunction) {
+    this._beforeCheck.push(fn);
   }
 
   afterCheck(fn: AnyFunction) {
@@ -78,7 +81,7 @@ export class BaseChangeDetector implements ChangeDetector {
 
   unregister() {
     if (this.parent) {
-      this.parent.children.delete(this.component);
+      this.parent.children.delete(this.target);
     }
   }
 
@@ -112,12 +115,14 @@ export class BaseChangeDetector implements ChangeDetector {
   check() {
     if (this.state === 'checked') return;
 
-    this.beforeCheck();
+    let inputChanges: Changes = {};
+    let hasInputChanges = false;
+
+    this._beforeCheck.forEach(fn => fn(inputChanges));
     this.state = 'checking';
-    const changes: Changes = {};
 
     this.watchers.forEach(watcher => {
-      const newValue = this.run(watcher.expression, this.component, []);
+      const newValue = this.run(watcher.expression, this.target, []);
       const lastValue = watcher.lastValue;
 
       const useEquals = watcher.useEquals;
@@ -127,8 +132,15 @@ export class BaseChangeDetector implements ChangeDetector {
         return;
       }
 
-      if (watcher.name) {
-        changes[watcher.name] = { value: newValue, lastValue }
+      if (watcher.metadata?.isInput) {
+        inputChanges[watcher.metadata.property] = {
+          value: newValue,
+          lastValue,
+          firstTime: watcher.metadata.firstTime,
+        }
+
+        watcher.metadata.firstTime = false;
+        hasInputChanges = true;
       }
 
       if (watcher.callback) {
@@ -138,7 +150,11 @@ export class BaseChangeDetector implements ChangeDetector {
       watcher.lastValue = useEquals ? clone(newValue) : newValue;
     });
 
-    this.onAfterCheck(changes);
+    if (!hasInputChanges) {
+      inputChanges = null;
+    }
+
+    this._afterCheck.forEach(fn => fn(inputChanges));
 
     if (this.state !== 'checking') {
       this.scheduleCheck();
@@ -164,12 +180,12 @@ export class BaseChangeDetector implements ChangeDetector {
     }, 1);
   }
 
-  fork(component?: CustomElement) {
-    return new BaseChangeDetector(component || this.component, this);
+  fork(target?: any) {
+    return new BaseChangeDetector(target || this.target, this);
   }
 
   private onAfterCheck(changes: Changes) {
-    this._afterCheck.forEach(fn => fn(changes));
+
   }
 }
 
