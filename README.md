@@ -22,17 +22,40 @@ Most of the syntax is shamelessly copied from Angular and Alpine.js:
 
 <!-- bind to events -->
 <div (click)="this.onClick()"></div>
+
+<!-- references -->
+<input #name/>
+<button (click)="name.focus()">click me</button>
+
+<!-- conditional nodes -->
+
+<template *if="this.showName" [else]="noname">Hello, John!</template>
+<template #noname>Who are you?</template>
+
+<!-- loops nodes -->
+<ul>
+  <template *for="'name'" [of]="this.listOfNames">
+    <li [innerText]="name"></li>
+  </template>
+</ul>
+
+<!-- conditional classes -->
+<p [class.highlight]="this.isTextHighlighted">Lorem ipsum</p>
+
 ```
 
 ```typescript
 // injectable class
-@Injectable({ providedBy: 'root' })
-export class Userervice {}
+@Injectable()
+export class UserService {}
 
+@Injectable()
 export class AppService {
   // injected service
-  @Inject()
-  userService: UserService;
+  @Inject() userService: UserService;
+  
+  // injected with symbol
+  @Inject(ApplicationRef) userService: Application;
 }
 
 ```
@@ -44,82 +67,7 @@ Unpkg makes life so easy, amirite?
 
 I also tried [Parcel](https://parceljs.org) to bundle the example and it's dead easy to start an app. Really cool stuff!
 
-Here's an example (also available at `https://github.com/homebots/elements-example`).
-
-To run this I used the command `parcel path/to/index.html`.
-
-```html
-<!-- index.html -->
-<script src="https://unpkg.com/zone.js"></script>
-<script src="https://unpkg.com/reflect-metadata"></script>
-<script src="./index.ts"></script>
-<link rel="stylesheet" href="/index.scss" />
-<!-- ... -->
-<app-root></app-root>
-```
-
-```typescript
-// index.ts
-import { bootstrap } from '@homebots/elements';
-export { AppComponent } from './app.component';
-
-bootstrap();
-```
-
-```typescript
-// app.component.ts
-
-import { Component } from '@homebots/elements';
-import { AppService } from './app.service';
-import appTemplate from './app.template';
-
-@Component({
-  tag: 'app-root',
-  template: appTemplate,
-})
-export class AppComponent extends HTMLElement {
-  name = 'John';
-
-  @Inject()
-  appService: AppService;
-
-  updateName() {
-    this.name = this.appService.getRandomName();
-  }
-}
-```
-
-```typescript
-// app.service.ts
-
-import { Injectable } from '@homebots/elements';
-
-@Injectable({
-  providedBy: 'root'
-})
-export class NameGenerationService {
-  getRandomName() {
-    return 'Le Random Smith #' + Math.round(Math.random() * 999);
-  }
-}
-```
-
-```typescript
-// app.template.ts
-
-export default `
-  <div>
-    <h2>App root</h2>
-    <label for="name">Your name:</label>
-
-    <input id="name" [value]="this.name" (input)="this.name = $event.target.value" />
-    <p>Hello, <span [innerText]="this.name"></span></p>
-
-    <button (click)="this.updateName()">change to random name</button>
-  </div>
-`;
-
-```
+Here's a To-do list using Elements https://github.com/homebots/elements-example/tree/todo-app
 
 # TODO
 
@@ -127,9 +75,9 @@ Lots of things can be improved here.
 To name a few:
 
 ```
-- Implement a syntax for conditionals and loops
+- Implement performance of conditionals and loops
 - Add some error handling to ease debugging
-- Create an almighty TODO app for this
+- Add tests
 ```
 
 I put this together in a few days as a braindump so there's no test coverage yet. Sorry :(
@@ -137,4 +85,6 @@ I put this together in a few days as a braindump so there's no test coverage yet
 I think this is not the most performant thing on Earth too, but I'm not trying to beat React or Angular.
 
 The goal of this project is to provide a no-brainer jump start solution to create small apps and experiments.
-The code will run on Chrome, Firefox or any recent/decent browser. I don't expect to ever support IE!
+The code will run on Chrome, Firefox or any recent/decent browser. 
+
+I don't expect to ever fully support IE, but some polyfills could make it work.
