@@ -52,9 +52,9 @@ export interface ChangeDetector {
   fork(target?: any): ChangeDetector;
 }
 
-export class BaseChangeDetector implements ChangeDetector {
+export class ReactiveChangeDetector implements ChangeDetector {
   readonly id = `@${++uid}`;
-  protected children = new Map<HTMLElement, BaseChangeDetector>();
+  protected children = new Map<HTMLElement, ReactiveChangeDetector>();
 
   private timer = 0;
   protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
@@ -64,7 +64,7 @@ export class BaseChangeDetector implements ChangeDetector {
 
   constructor(
     protected target: CustomElement = null,
-    public parent: BaseChangeDetector = null,
+    public parent: ReactiveChangeDetector = null,
   ) {
     if (this.parent) {
       this.parent.children.set(this.target, this);
@@ -181,7 +181,7 @@ export class BaseChangeDetector implements ChangeDetector {
   }
 
   fork(target?: any) {
-    return new BaseChangeDetector(target || this.target, this);
+    return new ReactiveChangeDetector(target || this.target, this);
   }
 
   private onAfterCheck(changes: Changes) {
@@ -193,7 +193,7 @@ interface ZoneProperties {
   changeDetector: ChangeDetector;
 }
 
-export class ZoneChangeDetector extends BaseChangeDetector implements ZoneSpec, ChangeDetector {
+export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSpec, ChangeDetector {
   get name() {
     return this.id;
   }
@@ -205,7 +205,7 @@ export class ZoneChangeDetector extends BaseChangeDetector implements ZoneSpec, 
 
   private get zone() {
     if (!this._zone) {
-      this._zone = this.parent._zone.fork(this);
+      this._zone = (this.parent?.zone || Zone.root).fork(this);
     }
 
     return this._zone;

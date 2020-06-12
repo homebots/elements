@@ -3653,14 +3653,14 @@ var utils_3 = utils.createTemplateFromHtml;
 
 var changeDetection = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ZoneChangeDetector = exports.BaseChangeDetector = exports.ChangeDetectorRef = void 0;
+exports.ZoneChangeDetector = exports.ReactiveChangeDetector = exports.ChangeDetectorRef = void 0;
 
 
 
 
 let uid = 0;
 exports.ChangeDetectorRef = Symbol('ChangeDetector');
-class BaseChangeDetector {
+class ReactiveChangeDetector {
     constructor(target = null, parent = null) {
         this.target = target;
         this.parent = parent;
@@ -3763,13 +3763,13 @@ class BaseChangeDetector {
         }, 1);
     }
     fork(target) {
-        return new BaseChangeDetector(target || this.target, this);
+        return new ReactiveChangeDetector(target || this.target, this);
     }
     onAfterCheck(changes) {
     }
 }
-exports.BaseChangeDetector = BaseChangeDetector;
-class ZoneChangeDetector extends BaseChangeDetector {
+exports.ReactiveChangeDetector = ReactiveChangeDetector;
+class ZoneChangeDetector extends ReactiveChangeDetector {
     constructor() {
         super(...arguments);
         this.properties = { changeDetector: this };
@@ -3778,8 +3778,9 @@ class ZoneChangeDetector extends BaseChangeDetector {
         return this.id;
     }
     get zone() {
+        var _a;
         if (!this._zone) {
-            this._zone = this.parent._zone.fork(this);
+            this._zone = (((_a = this.parent) === null || _a === void 0 ? void 0 : _a.zone) || Zone.root).fork(this);
         }
         return this._zone;
     }
@@ -3816,7 +3817,7 @@ exports.ZoneChangeDetector = ZoneChangeDetector;
 
 unwrapExports(changeDetection);
 var changeDetection_1 = changeDetection.ZoneChangeDetector;
-var changeDetection_2 = changeDetection.BaseChangeDetector;
+var changeDetection_2 = changeDetection.ReactiveChangeDetector;
 var changeDetection_3 = changeDetection.ChangeDetectorRef;
 
 /*! *****************************************************************************
@@ -8454,7 +8455,7 @@ Object.defineProperty(exports, "bootstrap", { enumerable: true, get: function ()
 Object.defineProperty(exports, "BOOTSTRAP", { enumerable: true, get: function () { return bootstrap_1.BOOTSTRAP; } });
 Object.defineProperty(exports, "domReady", { enumerable: true, get: function () { return bootstrap_1.domReady; } });
 
-Object.defineProperty(exports, "BaseChangeDetector", { enumerable: true, get: function () { return changeDetection.BaseChangeDetector; } });
+Object.defineProperty(exports, "ReactiveChangeDetector", { enumerable: true, get: function () { return changeDetection.ReactiveChangeDetector; } });
 Object.defineProperty(exports, "ChangeDetectorRef", { enumerable: true, get: function () { return changeDetection.ChangeDetectorRef; } });
 Object.defineProperty(exports, "ZoneChangeDetector", { enumerable: true, get: function () { return changeDetection.ZoneChangeDetector; } });
 
@@ -8496,7 +8497,7 @@ var src_2 = src.ApplicationRef;
 var src_3 = src.bootstrap;
 var src_4 = src.BOOTSTRAP;
 var src_5 = src.domReady;
-var src_6 = src.BaseChangeDetector;
+var src_6 = src.ReactiveChangeDetector;
 var src_7 = src.ChangeDetectorRef;
 var src_8 = src.ZoneChangeDetector;
 var src_9 = src.addHostAttributes;
@@ -8523,4 +8524,4 @@ var src_29 = src.createTemplateFromHtml;
 var src_30 = src.noop;
 
 export default index;
-export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_6 as BaseChangeDetector, src_7 as ChangeDetectorRef, src_11 as Component, src_16 as ContainerRegistry, src_19 as DomEventEmitter, src_17 as DomHelpers, src_20 as EventEmitter, src_22 as ExecutionContext, src_24 as Inject, src_25 as Injectable, src_26 as Injector, src_27 as InjectorSymbol, src_28 as Input, src_21 as Output, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_18 as addEventHandler, src_9 as addHostAttributes, src_10 as attachShadowDom, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_29 as createTemplateFromHtml, src_5 as domReady, src_14 as findParentComponent, src_23 as getInjectorFrom, src_30 as noop };
+export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_7 as ChangeDetectorRef, src_11 as Component, src_16 as ContainerRegistry, src_19 as DomEventEmitter, src_17 as DomHelpers, src_20 as EventEmitter, src_22 as ExecutionContext, src_24 as Inject, src_25 as Injectable, src_26 as Injector, src_27 as InjectorSymbol, src_28 as Input, src_21 as Output, src_6 as ReactiveChangeDetector, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_18 as addEventHandler, src_9 as addHostAttributes, src_10 as attachShadowDom, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_29 as createTemplateFromHtml, src_5 as domReady, src_14 as findParentComponent, src_23 as getInjectorFrom, src_30 as noop };
