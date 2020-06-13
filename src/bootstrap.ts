@@ -27,7 +27,6 @@ export interface BootstrapOptions {
   providers: Provider[];
 }
 
-
 export function bootstrap(options?: BootstrapOptions) {
   if (!options) {
     const zoneChangeDetector = new ZoneChangeDetector();

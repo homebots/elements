@@ -41,8 +41,8 @@ export class ForContainer {
     });
 
     children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node as HTMLElement, changeDetector, o.context)));
-    changeDetector.markForCheck();
-    changeDetector.scheduleCheck();
+    changeDetector.markTreeForCheck();
+    changeDetector.scheduleTreeCheck();
 
     setTimeoutNative(() => {
       this.removeNodes();

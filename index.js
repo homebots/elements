@@ -3705,9 +3705,15 @@ class ReactiveChangeDetector {
             useEquals,
         });
     }
-    markForCheck() {
+    markTreeForCheck() {
         this.state = 'dirty';
-        this.children.forEach(child => child.markForCheck());
+        this.children.forEach(child => child.markTreeForCheck());
+    }
+    markAsDirtyAndCheck() {
+        this.markTreeForCheck();
+        if (!this.timer) {
+            this.scheduleTreeCheck();
+        }
     }
     check() {
         if (this.state === 'checked')
@@ -3718,7 +3724,7 @@ class ReactiveChangeDetector {
         this.state = 'checking';
         this.watchers.forEach(watcher => {
             var _a;
-            const newValue = this.run(watcher.expression, this.target, []);
+            const newValue = this.runWatcher(watcher.expression, this.target, []);
             const lastValue = watcher.lastValue;
             const useEquals = watcher.useEquals;
             const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !lodash_isequal(newValue, lastValue));
@@ -3734,26 +3740,32 @@ class ReactiveChangeDetector {
                 watcher.metadata.firstTime = false;
                 hasInputChanges = true;
             }
-            if (watcher.callback) {
-                this.run(watcher.callback, null, [newValue, lastValue]);
-            }
             watcher.lastValue = useEquals ? lodash_clone(newValue) : newValue;
+            if (watcher.callback) {
+                this.runWatcherCallback(watcher.callback, null, [newValue, lastValue]);
+            }
         });
         if (!hasInputChanges) {
             inputChanges = null;
         }
         this._afterCheck.forEach(fn => fn(inputChanges));
         if (this.state !== 'checking') {
-            this.scheduleCheck();
+            this.scheduleTreeCheck();
             return;
         }
         this.state = 'checked';
+    }
+    runWatcher(...args) {
+        return this.run.apply(this, args);
+    }
+    runWatcherCallback(...args) {
+        return this.run.apply(this, args);
     }
     checkTree() {
         this.check();
         this.children.forEach(cd => cd.checkTree());
     }
-    scheduleCheck() {
+    scheduleTreeCheck() {
         if (this.timer) {
             clearTimeout(this.timer);
         }
@@ -3764,8 +3776,6 @@ class ReactiveChangeDetector {
     }
     fork(target) {
         return new ReactiveChangeDetector(target || this.target, this);
-    }
-    onAfterCheck(changes) {
     }
 }
 exports.ReactiveChangeDetector = ReactiveChangeDetector;
@@ -3790,6 +3800,12 @@ class ZoneChangeDetector extends ReactiveChangeDetector {
     fork(component) {
         return new ZoneChangeDetector(component, this);
     }
+    runWatcherCallback(callback, applyThis, applyArgs) {
+        return this.zone.runGuarded(callback, applyThis, applyArgs, this.id);
+    }
+    runWatcher(...args) {
+        return super.run.apply(this, args);
+    }
     onInvoke(delegate, _, target, callback, applyThis, applyArgs, source) {
         const output = delegate.invoke(target, callback, applyThis, applyArgs);
         this.scheduleZoneCheck(target);
@@ -3807,8 +3823,7 @@ class ZoneChangeDetector extends ReactiveChangeDetector {
     }
     scheduleZoneCheck(zone) {
         const changeDetector = zone.get('changeDetector');
-        changeDetector.markForCheck();
-        changeDetector.scheduleCheck();
+        changeDetector.markAsDirtyAndCheck();
     }
 }
 exports.ZoneChangeDetector = ZoneChangeDetector;
@@ -4429,6 +4444,362 @@ exports.DomHelpers = DomHelpers;
 unwrapExports(domHelpers);
 var domHelpers_1 = domHelpers.DomHelpers;
 var domHelpers_2 = domHelpers.TemplateContainer;
+
+var events = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.dispatchEvent = exports.addEventListener = exports.Output = exports.DomEventEmitter = void 0;
+class DomEventEmitter {
+    constructor(element, event) {
+        this.element = element;
+        this.event = event;
+    }
+    emit(data) {
+        dispatchEvent(this.element, this.event, data);
+    }
+}
+exports.DomEventEmitter = DomEventEmitter;
+function Output(eventName) {
+    return function (target, property) {
+        // NOTE: DOM event names are always lower case
+        const emitter = new DomEventEmitter(this, eventName.toLowerCase());
+        Object.defineProperty(target, property, { value: emitter });
+    };
+}
+exports.Output = Output;
+function addEventListener(cd, executionContext, element, eventNameAndSuffix, expression) {
+    const eventHandler = ($event) => executionContext.run(expression, { $event });
+    const [eventName, suffix] = eventNameAndSuffix.split('.');
+    const useCapture = eventName === 'focus' || eventName === 'blur';
+    const callback = (event) => cd.run(() => {
+        if (suffix === 'once') {
+            element.removeEventListener(eventName, callback, { capture: useCapture });
+        }
+        if (suffix === 'stop') {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        eventHandler.apply(element, [event]);
+        cd.markTreeForCheck();
+        cd.scheduleTreeCheck();
+    });
+    element.addEventListener(eventName, callback, { capture: useCapture });
+}
+exports.addEventListener = addEventListener;
+function dispatchEvent(element, event, detail = {}) {
+    const customEvent = new CustomEvent(event, {
+        detail,
+        bubbles: true,
+    });
+    return element.dispatchEvent(customEvent);
+}
+exports.dispatchEvent = dispatchEvent;
+
+});
+
+unwrapExports(events);
+var events_1 = events.dispatchEvent;
+var events_2 = events.addEventListener;
+var events_3 = events.Output;
+var events_4 = events.DomEventEmitter;
+
+var ifContainer = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.IfContainer = void 0;
+
+
+
+
+
+let IfContainer = /** @class */ (() => {
+    class IfContainer {
+        constructor(template, changeDetector, executionContext) {
+            this.template = template;
+            this.changeDetector = changeDetector;
+            this.executionContext = executionContext;
+            this.nodes = [];
+        }
+        onChanges() {
+            this.removeNodes();
+            if (this.if) {
+                this.createNodes(this.template);
+            }
+            else if (this.else) {
+                this.createNodes(this.else);
+            }
+            else {
+                this.removeNodes();
+            }
+        }
+        createNodes(template) {
+            const templateNodes = Array.from(template.content.childNodes);
+            const fragment = document.createDocumentFragment();
+            const nodes = templateNodes.map(n => n.cloneNode(true));
+            fragment.append(...nodes);
+            nodes.forEach(node => this.dom.compileTree(node, this.changeDetector, this.executionContext));
+            this.changeDetector.markTreeForCheck();
+            this.changeDetector.scheduleTreeCheck();
+            utils.setTimeoutNative(() => {
+                this.template.parentNode.appendChild(fragment);
+                this.removeNodes();
+                this.nodes = nodes;
+            }, 2);
+        }
+        removeNodes() {
+            this.nodes.forEach(node => node.parentNode.removeChild(node));
+            this.nodes = [];
+        }
+    }
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", Boolean)
+    ], IfContainer.prototype, "if", void 0);
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", HTMLTemplateElement)
+    ], IfContainer.prototype, "else", void 0);
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", domHelpers.DomHelpers)
+    ], IfContainer.prototype, "dom", void 0);
+    return IfContainer;
+})();
+exports.IfContainer = IfContainer;
+
+});
+
+unwrapExports(ifContainer);
+var ifContainer_1 = ifContainer.IfContainer;
+
+var forContainer = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ForContainer = void 0;
+
+
+
+
+
+let ForContainer = /** @class */ (() => {
+    class ForContainer {
+        constructor(template, changeDetector, executionContext) {
+            this.template = template;
+            this.changeDetector = changeDetector;
+            this.executionContext = executionContext;
+            this.nodes = [];
+        }
+        onChanges() {
+            if (!this.of || !this.for) {
+                return;
+            }
+            const items = Array.from(this.of);
+            const changeDetector = this.changeDetector;
+            const templateNodes = Array.from(this.template.content.children);
+            const fragment = document.createDocumentFragment();
+            const allNodes = [];
+            const children = items.map((item, index) => {
+                const context = this.executionContext.fork();
+                const nodes = templateNodes.map(n => n.cloneNode(true));
+                allNodes.push(...nodes);
+                context.addLocals({ [this.for]: item, index });
+                fragment.append(...nodes);
+                return { nodes, context };
+            });
+            children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node, changeDetector, o.context)));
+            changeDetector.markTreeForCheck();
+            changeDetector.scheduleTreeCheck();
+            utils.setTimeoutNative(() => {
+                this.removeNodes();
+                this.nodes = allNodes;
+                this.template.parentNode.appendChild(fragment);
+            }, 2);
+        }
+        removeNodes() {
+            this.nodes.forEach(node => node.parentNode.removeChild(node));
+            this.nodes = [];
+        }
+    }
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", Object)
+    ], ForContainer.prototype, "of", void 0);
+    tslib_es6.__decorate([
+        inputs.Input(),
+        tslib_es6.__metadata("design:type", String)
+    ], ForContainer.prototype, "for", void 0);
+    tslib_es6.__decorate([
+        injector.Inject(),
+        tslib_es6.__metadata("design:type", domHelpers.DomHelpers)
+    ], ForContainer.prototype, "dom", void 0);
+    return ForContainer;
+})();
+exports.ForContainer = ForContainer;
+
+});
+
+unwrapExports(forContainer);
+var forContainer_1 = forContainer.ForContainer;
+
+var executionContext = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NullContext = exports.ExecutionContext = void 0;
+const expressionCache = new Map();
+class ExecutionContext {
+    constructor(component, parent) {
+        this.component = component;
+        this.parent = parent;
+    }
+    addLocals(locals) {
+        Object.assign(this.locals || (this.locals = {}), locals);
+    }
+    fork(newContext) {
+        return new ExecutionContext(newContext || this.component, this);
+    }
+    run(expression, localValues) {
+        const fn = this.compile(expression, localValues);
+        try {
+            return fn();
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+    compile(expression, localValues) {
+        const locals = this.getLocals(localValues);
+        const localsByName = Object.keys(locals);
+        const cacheKey = expression + localsByName;
+        if (!expressionCache.has(cacheKey)) {
+            expressionCache.set(cacheKey, Function(...localsByName, `return ${expression}`));
+        }
+        const localsAsArray = localsByName.map(key => locals[key]);
+        return expressionCache.get(cacheKey).bind(this.component, ...localsAsArray);
+    }
+    getLocals(additionalValues) {
+        const locals = {};
+        if (this.parent) {
+            Object.assign(locals, this.parent.getLocals());
+        }
+        if (this.locals) {
+            Object.assign(locals, this.locals);
+        }
+        if (additionalValues) {
+            Object.assign(locals, additionalValues);
+        }
+        return locals;
+    }
+}
+exports.ExecutionContext = ExecutionContext;
+class NullContext_ extends ExecutionContext {
+    constructor() {
+        super(null);
+    }
+    addLocals() { }
+}
+exports.NullContext = new NullContext_();
+
+});
+
+unwrapExports(executionContext);
+var executionContext_1 = executionContext.NullContext;
+var executionContext_2 = executionContext.ExecutionContext;
+
+var application = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Application = exports.ApplicationRef = void 0;
+
+
+
+
+
+
+
+
+
+exports.ApplicationRef = Symbol('ApplicationRef');
+class Application {
+    constructor(rootNode, providers) {
+        const injector$1 = rootNode[injector.InjectorSymbol] = new injector.Injector(null, providers);
+        injector$1.register({ type: exports.ApplicationRef, useValue: this });
+        injector$1.register({ type: executionContext.ExecutionContext, useValue: executionContext.NullContext });
+        this.changeDetector = injector$1.get(changeDetection.ChangeDetectorRef);
+        const syntaxRules$1 = injector$1.get(syntaxRules.SyntaxRules);
+        const domUtils = injector$1.get(domHelpers.DomHelpers);
+        const containerRegistry = injector$1.get(registry.ContainerRegistry);
+        syntaxRules$1.addRule(a => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
+        syntaxRules$1.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createTemplateContainerTarget.bind(domUtils));
+        syntaxRules$1.addRule(a => a.charAt(0) === '(', events.addEventListener);
+        syntaxRules$1.addRule(a => a.charAt(0) === '[' || a.charAt(0) === '*', domUtils.watchExpressionAndUpdateProperty.bind(domUtils));
+        syntaxRules$1.addRule(a => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
+        syntaxRules$1.addRule(a => a.startsWith('[class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
+        containerRegistry.set('if', ifContainer.IfContainer);
+        containerRegistry.set('for', forContainer.ForContainer);
+    }
+    tick() {
+        this.changeDetector.scheduleTreeCheck();
+    }
+}
+exports.Application = Application;
+
+});
+
+unwrapExports(application);
+var application_1 = application.Application;
+var application_2 = application.ApplicationRef;
+
+var bootstrap_1 = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.domReady = exports.bootstrap = exports.BOOTSTRAP = void 0;
+
+
+class Bootstrap {
+    constructor() {
+        this.promise = new Promise((resolve) => this.resolve = resolve);
+    }
+    tick(app) {
+        this.resolve(app);
+    }
+    whenReady(fn) {
+        this.promise = this.promise.then(fn);
+    }
+}
+exports.BOOTSTRAP = new Bootstrap();
+function bootstrap(options) {
+    if (!options) {
+        const zoneChangeDetector = new changeDetection.ZoneChangeDetector();
+        options = {
+            rootNode: document.body,
+            providers: [
+                { type: changeDetection.ChangeDetectorRef, useValue: zoneChangeDetector },
+            ]
+        };
+    }
+    const { rootNode, providers } = options;
+    domReady().then(function () {
+        const app = new application.Application(rootNode || document.body, providers);
+        exports.BOOTSTRAP.whenReady(() => app.tick());
+        exports.BOOTSTRAP.tick(app);
+        return app;
+    }).catch(console.log);
+}
+exports.bootstrap = bootstrap;
+// Thanks @stimulus:
+// https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
+function domReady() {
+    return new Promise(resolve => {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', resolve);
+        }
+        else {
+            resolve();
+        }
+    });
+}
+exports.domReady = domReady;
+
+});
+
+unwrapExports(bootstrap_1);
+var bootstrap_2 = bootstrap_1.domReady;
+var bootstrap_3 = bootstrap_1.bootstrap;
+var bootstrap_4 = bootstrap_1.BOOTSTRAP;
 
 /** PURE_IMPORTS_START  PURE_IMPORTS_END */
 function isFunction(x) {
@@ -7969,368 +8340,6 @@ var _esm5 = /*#__PURE__*/Object.freeze({
 	config: config
 });
 
-var events = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.addEventHandler = exports.EventEmitter = exports.Output = exports.DomEventEmitter = void 0;
-
-class DomEventEmitter {
-    constructor(element, event) {
-        this.element = element;
-        this.event = event;
-    }
-    static emitEvent(element, event, detail = {}) {
-        const customEvent = new CustomEvent(event, {
-            detail,
-            bubbles: true,
-        });
-        element.dispatchEvent(customEvent);
-    }
-    emit(data) {
-        DomEventEmitter.emitEvent(this.element, this.event, data);
-    }
-}
-exports.DomEventEmitter = DomEventEmitter;
-class ClassEventEmitter {
-    constructor() {
-        this.emitter = new _esm5.Subject();
-    }
-    addEventListener(callback) {
-        return this.emitter.subscribe(callback);
-    }
-    emit(data) {
-        this.emitter.next(data);
-    }
-}
-function Output(eventName) {
-    return function (target, property) {
-        // NOTE! event names are always lower case!
-        eventName = (eventName || property).toLowerCase();
-        Object.defineProperty(target, property, {
-            get() {
-                return this[eventName] || (this[eventName] = new DomEventEmitter(this, eventName));
-            },
-        });
-    };
-}
-exports.Output = Output;
-exports.EventEmitter = ClassEventEmitter;
-function addEventHandler(cd, executionContext, element, eventNameAndSuffix, expression) {
-    const eventHandler = ($event) => executionContext.run(expression, { $event });
-    const [eventName, suffix] = eventNameAndSuffix.split('.');
-    const useCapture = eventName === 'focus' || eventName === 'blur';
-    const callback = (event) => cd.run(() => {
-        if (suffix === 'once') {
-            element.removeEventListener(eventName, callback, { capture: useCapture });
-        }
-        if (suffix === 'stop') {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        eventHandler.apply(element, [event]);
-        cd.markForCheck();
-        cd.scheduleCheck();
-    });
-    element.addEventListener(eventName, callback, { capture: useCapture });
-}
-exports.addEventHandler = addEventHandler;
-
-});
-
-unwrapExports(events);
-var events_1 = events.addEventHandler;
-var events_2 = events.EventEmitter;
-var events_3 = events.Output;
-var events_4 = events.DomEventEmitter;
-
-var ifContainer = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.IfContainer = void 0;
-
-
-
-
-
-let IfContainer = /** @class */ (() => {
-    class IfContainer {
-        constructor(template, changeDetector, executionContext) {
-            this.template = template;
-            this.changeDetector = changeDetector;
-            this.executionContext = executionContext;
-            this.nodes = [];
-        }
-        onChanges() {
-            this.removeNodes();
-            if (this.if) {
-                this.createNodes(this.template);
-            }
-            else if (this.else) {
-                this.createNodes(this.else);
-            }
-            else {
-                this.removeNodes();
-            }
-        }
-        createNodes(template) {
-            const templateNodes = Array.from(template.content.childNodes);
-            const fragment = document.createDocumentFragment();
-            const nodes = templateNodes.map(n => n.cloneNode(true));
-            fragment.append(...nodes);
-            nodes.forEach(node => this.dom.compileTree(node, this.changeDetector, this.executionContext));
-            this.changeDetector.markForCheck();
-            this.changeDetector.scheduleCheck();
-            utils.setTimeoutNative(() => {
-                this.template.parentNode.appendChild(fragment);
-                this.removeNodes();
-                this.nodes = nodes;
-            }, 2);
-        }
-        removeNodes() {
-            this.nodes.forEach(node => node.parentNode.removeChild(node));
-            this.nodes = [];
-        }
-    }
-    tslib_es6.__decorate([
-        inputs.Input(),
-        tslib_es6.__metadata("design:type", Boolean)
-    ], IfContainer.prototype, "if", void 0);
-    tslib_es6.__decorate([
-        inputs.Input(),
-        tslib_es6.__metadata("design:type", HTMLTemplateElement)
-    ], IfContainer.prototype, "else", void 0);
-    tslib_es6.__decorate([
-        injector.Inject(),
-        tslib_es6.__metadata("design:type", domHelpers.DomHelpers)
-    ], IfContainer.prototype, "dom", void 0);
-    return IfContainer;
-})();
-exports.IfContainer = IfContainer;
-
-});
-
-unwrapExports(ifContainer);
-var ifContainer_1 = ifContainer.IfContainer;
-
-var forContainer = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ForContainer = void 0;
-
-
-
-
-
-let ForContainer = /** @class */ (() => {
-    class ForContainer {
-        constructor(template, changeDetector, executionContext) {
-            this.template = template;
-            this.changeDetector = changeDetector;
-            this.executionContext = executionContext;
-            this.nodes = [];
-        }
-        onChanges() {
-            if (!this.of || !this.for) {
-                return;
-            }
-            const items = Array.from(this.of);
-            const changeDetector = this.changeDetector;
-            const templateNodes = Array.from(this.template.content.children);
-            const fragment = document.createDocumentFragment();
-            const allNodes = [];
-            const children = items.map((item, index) => {
-                const context = this.executionContext.fork();
-                const nodes = templateNodes.map(n => n.cloneNode(true));
-                allNodes.push(...nodes);
-                context.addLocals({ [this.for]: item, index });
-                fragment.append(...nodes);
-                return { nodes, context };
-            });
-            children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node, changeDetector, o.context)));
-            changeDetector.markForCheck();
-            changeDetector.scheduleCheck();
-            utils.setTimeoutNative(() => {
-                this.removeNodes();
-                this.nodes = allNodes;
-                this.template.parentNode.appendChild(fragment);
-            }, 2);
-        }
-        removeNodes() {
-            this.nodes.forEach(node => node.parentNode.removeChild(node));
-            this.nodes = [];
-        }
-    }
-    tslib_es6.__decorate([
-        inputs.Input(),
-        tslib_es6.__metadata("design:type", Object)
-    ], ForContainer.prototype, "of", void 0);
-    tslib_es6.__decorate([
-        inputs.Input(),
-        tslib_es6.__metadata("design:type", String)
-    ], ForContainer.prototype, "for", void 0);
-    tslib_es6.__decorate([
-        injector.Inject(),
-        tslib_es6.__metadata("design:type", domHelpers.DomHelpers)
-    ], ForContainer.prototype, "dom", void 0);
-    return ForContainer;
-})();
-exports.ForContainer = ForContainer;
-
-});
-
-unwrapExports(forContainer);
-var forContainer_1 = forContainer.ForContainer;
-
-var application = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Application = exports.ApplicationRef = void 0;
-
-
-
-
-
-
-
-
-exports.ApplicationRef = Symbol('ApplicationRef');
-class Application {
-    constructor(rootNode, providers) {
-        const injector$1 = rootNode[injector.InjectorSymbol] = new injector.Injector(null, providers);
-        this.changeDetector = injector$1.get(changeDetection.ChangeDetectorRef);
-        injector$1.register({ type: exports.ApplicationRef, useValue: this });
-        const syntaxRules$1 = injector$1.get(syntaxRules.SyntaxRules);
-        const domUtils = injector$1.get(domHelpers.DomHelpers);
-        const containerRegistry = injector$1.get(registry.ContainerRegistry);
-        syntaxRules$1.addRule(a => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
-        syntaxRules$1.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createTemplateContainerTarget.bind(domUtils));
-        syntaxRules$1.addRule(a => a.charAt(0) === '(', events.addEventHandler);
-        syntaxRules$1.addRule(a => a.charAt(0) === '[' || a.charAt(0) === '*', domUtils.watchExpressionAndUpdateProperty.bind(domUtils));
-        syntaxRules$1.addRule(a => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
-        syntaxRules$1.addRule(a => a.startsWith('[class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
-        containerRegistry.set('if', ifContainer.IfContainer);
-        containerRegistry.set('for', forContainer.ForContainer);
-    }
-    tick() {
-        this.changeDetector.scheduleCheck();
-    }
-}
-exports.Application = Application;
-
-});
-
-unwrapExports(application);
-var application_1 = application.Application;
-var application_2 = application.ApplicationRef;
-
-var bootstrap_1 = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.domReady = exports.bootstrap = exports.BOOTSTRAP = void 0;
-
-
-class Bootstrap {
-    constructor() {
-        this.promise = new Promise((resolve) => this.resolve = resolve);
-    }
-    tick(app) {
-        this.resolve(app);
-    }
-    whenReady(fn) {
-        this.promise = this.promise.then(fn);
-    }
-}
-exports.BOOTSTRAP = new Bootstrap();
-function bootstrap(options) {
-    if (!options) {
-        const zoneChangeDetector = new changeDetection.ZoneChangeDetector();
-        options = {
-            rootNode: document.body,
-            providers: [
-                { type: changeDetection.ChangeDetectorRef, useValue: zoneChangeDetector },
-            ]
-        };
-    }
-    const { rootNode, providers } = options;
-    domReady().then(function () {
-        const app = new application.Application(rootNode || document.body, providers);
-        exports.BOOTSTRAP.whenReady(() => app.tick());
-        exports.BOOTSTRAP.tick(app);
-        return app;
-    }).catch(console.log);
-}
-exports.bootstrap = bootstrap;
-// Thanks @stimulus:
-// https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
-function domReady() {
-    return new Promise(resolve => {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', resolve);
-        }
-        else {
-            resolve();
-        }
-    });
-}
-exports.domReady = domReady;
-
-});
-
-unwrapExports(bootstrap_1);
-var bootstrap_2 = bootstrap_1.domReady;
-var bootstrap_3 = bootstrap_1.bootstrap;
-var bootstrap_4 = bootstrap_1.BOOTSTRAP;
-
-var executionContext = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExecutionContext = void 0;
-const expressionCache = new Map();
-class ExecutionContext {
-    constructor(component, parent) {
-        this.component = component;
-        this.parent = parent;
-    }
-    addLocals(locals) {
-        Object.assign(this.locals || (this.locals = {}), locals);
-    }
-    fork(newContext) {
-        return new ExecutionContext(newContext || this.component, this);
-    }
-    run(expression, localValues) {
-        const fn = this.compile(expression, localValues);
-        try {
-            return fn();
-        }
-        catch (error) {
-            console.log(error);
-        }
-    }
-    compile(expression, localValues) {
-        const locals = this.getLocals(localValues);
-        const localsByName = Object.keys(locals);
-        const cacheKey = expression + localsByName;
-        if (!expressionCache.has(cacheKey)) {
-            expressionCache.set(cacheKey, Function(...localsByName, `return ${expression}`));
-        }
-        const localsAsArray = localsByName.map(key => locals[key]);
-        return expressionCache.get(cacheKey).bind(this.component, ...localsAsArray);
-    }
-    getLocals(additionalValues) {
-        const locals = {};
-        if (this.parent) {
-            Object.assign(locals, this.parent.getLocals());
-        }
-        if (this.locals) {
-            Object.assign(locals, this.locals);
-        }
-        if (additionalValues) {
-            Object.assign(locals, additionalValues);
-        }
-        return locals;
-    }
-}
-exports.ExecutionContext = ExecutionContext;
-
-});
-
-unwrapExports(executionContext);
-var executionContext_1 = executionContext.ExecutionContext;
-
 var component = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.createComponentClass = exports.Component = exports.TemplateRef = void 0;
@@ -8365,7 +8374,7 @@ function createComponentClass(ComponentClass, options) {
                 dom.compileTree(this.shadowRoot || this, changeDetector, executionContext$1);
                 changeDetector.beforeCheck(() => this.onBeforeCheck());
                 changeDetector.afterCheck(changes => changes && this.onChanges(changes));
-                changeDetector.scheduleCheck();
+                changeDetector.scheduleTreeCheck();
                 this.onInit();
             }
             catch (error) {
@@ -8471,12 +8480,13 @@ Object.defineProperty(exports, "ContainerRegistry", { enumerable: true, get: fun
 
 Object.defineProperty(exports, "DomHelpers", { enumerable: true, get: function () { return domHelpers.DomHelpers; } });
 
-Object.defineProperty(exports, "addEventHandler", { enumerable: true, get: function () { return events.addEventHandler; } });
+Object.defineProperty(exports, "addEventListener", { enumerable: true, get: function () { return events.addEventListener; } });
 Object.defineProperty(exports, "DomEventEmitter", { enumerable: true, get: function () { return events.DomEventEmitter; } });
-Object.defineProperty(exports, "EventEmitter", { enumerable: true, get: function () { return events.EventEmitter; } });
 Object.defineProperty(exports, "Output", { enumerable: true, get: function () { return events.Output; } });
+Object.defineProperty(exports, "dispatchEvent", { enumerable: true, get: function () { return events.dispatchEvent; } });
 
 Object.defineProperty(exports, "ExecutionContext", { enumerable: true, get: function () { return executionContext.ExecutionContext; } });
+Object.defineProperty(exports, "NullContext", { enumerable: true, get: function () { return executionContext.NullContext; } });
 
 Object.defineProperty(exports, "getInjectorFrom", { enumerable: true, get: function () { return injector.getInjectorFrom; } });
 Object.defineProperty(exports, "Inject", { enumerable: true, get: function () { return injector.Inject; } });
@@ -8509,19 +8519,20 @@ var src_14 = src.findParentComponent;
 var src_15 = src.TemplateRef;
 var src_16 = src.ContainerRegistry;
 var src_17 = src.DomHelpers;
-var src_18 = src.addEventHandler;
+var src_18 = src.addEventListener;
 var src_19 = src.DomEventEmitter;
-var src_20 = src.EventEmitter;
-var src_21 = src.Output;
+var src_20 = src.Output;
+var src_21 = src.dispatchEvent;
 var src_22 = src.ExecutionContext;
-var src_23 = src.getInjectorFrom;
-var src_24 = src.Inject;
-var src_25 = src.Injectable;
-var src_26 = src.Injector;
-var src_27 = src.InjectorSymbol;
-var src_28 = src.Input;
-var src_29 = src.createTemplateFromHtml;
-var src_30 = src.noop;
+var src_23 = src.NullContext;
+var src_24 = src.getInjectorFrom;
+var src_25 = src.Inject;
+var src_26 = src.Injectable;
+var src_27 = src.Injector;
+var src_28 = src.InjectorSymbol;
+var src_29 = src.Input;
+var src_30 = src.createTemplateFromHtml;
+var src_31 = src.noop;
 
 export default index;
-export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_7 as ChangeDetectorRef, src_11 as Component, src_16 as ContainerRegistry, src_19 as DomEventEmitter, src_17 as DomHelpers, src_20 as EventEmitter, src_22 as ExecutionContext, src_24 as Inject, src_25 as Injectable, src_26 as Injector, src_27 as InjectorSymbol, src_28 as Input, src_21 as Output, src_6 as ReactiveChangeDetector, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_18 as addEventHandler, src_9 as addHostAttributes, src_10 as attachShadowDom, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_29 as createTemplateFromHtml, src_5 as domReady, src_14 as findParentComponent, src_23 as getInjectorFrom, src_30 as noop };
+export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_7 as ChangeDetectorRef, src_11 as Component, src_16 as ContainerRegistry, src_19 as DomEventEmitter, src_17 as DomHelpers, src_22 as ExecutionContext, src_25 as Inject, src_26 as Injectable, src_27 as Injector, src_28 as InjectorSymbol, src_29 as Input, src_23 as NullContext, src_20 as Output, src_6 as ReactiveChangeDetector, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_18 as addEventListener, src_9 as addHostAttributes, src_10 as attachShadowDom, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_30 as createTemplateFromHtml, src_21 as dispatchEvent, src_5 as domReady, src_14 as findParentComponent, src_24 as getInjectorFrom, src_31 as noop };

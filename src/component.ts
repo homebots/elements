@@ -89,7 +89,7 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
 
         changeDetector.beforeCheck(() => this.onBeforeCheck());
         changeDetector.afterCheck(changes => changes && this.onChanges(changes));
-        changeDetector.scheduleCheck();
+        changeDetector.scheduleTreeCheck();
 
         this.onInit();
       } catch (error) {

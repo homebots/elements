@@ -38,8 +38,8 @@ export class IfContainer {
     fragment.append(...nodes);
     nodes.forEach(node => this.dom.compileTree(node as HTMLElement, this.changeDetector, this.executionContext));
 
-    this.changeDetector.markForCheck();
-    this.changeDetector.scheduleCheck();
+    this.changeDetector.markTreeForCheck();
+    this.changeDetector.scheduleTreeCheck();
 
     setTimeoutNative(() => {
       this.template.parentNode.appendChild(fragment);

@@ -10,54 +10,25 @@ export interface EventEmitter<T> {
 }
 
 export class DomEventEmitter<T> implements EventEmitter<T> {
-  static emitEvent(element: HTMLElement, event: string, detail: any = {}) {
-    const customEvent = new CustomEvent(event, {
-      detail,
-      bubbles: true,
-    });
-
-    element.dispatchEvent(customEvent);
-  }
-
   constructor(
     private element: HTMLElement,
     private event: string,
   ) {}
 
   emit(data: T) {
-    DomEventEmitter.emitEvent(this.element, this.event, data);
+    dispatchEvent(this.element, this.event, data);
   }
 }
 
-class ClassEventEmitter<T> implements EventEmitter<T> {
-  private emitter = new Subject<T>();
-  constructor() {}
-
-  addEventListener(callback: EventCallback<T>) {
-    return this.emitter.subscribe(callback);
-  }
-
-  emit(data: T) {
-    this.emitter.next(data);
-  }
-}
-
-export function Output(eventName?: string) {
+export function Output(eventName: string) {
   return function (target: any, property: string) {
-    // NOTE! event names are always lower case!
-    eventName = (eventName || property).toLowerCase();
-
-    Object.defineProperty(target, property, {
-      get() {
-        return this[eventName] || (this[eventName] = new DomEventEmitter<any>(this, eventName));
-      },
-    });
+    // NOTE: DOM event names are always lower case
+    const emitter = new DomEventEmitter<any>(this, eventName.toLowerCase());
+    Object.defineProperty(target, property, { value: emitter });
   };
 }
 
-export const EventEmitter = ClassEventEmitter;
-
-export function addEventHandler(cd: ChangeDetector, executionContext: ExecutionContext, element: HTMLElement, eventNameAndSuffix: string, expression: string) {
+export function addEventListener(cd: ChangeDetector, executionContext: ExecutionContext, element: HTMLElement, eventNameAndSuffix: string, expression: string) {
   const eventHandler = ($event: Event) => executionContext.run(expression, { $event });
   const [eventName, suffix] = eventNameAndSuffix.split('.');
   const useCapture = eventName === 'focus' || eventName === 'blur';
@@ -72,9 +43,19 @@ export function addEventHandler(cd: ChangeDetector, executionContext: ExecutionC
     }
 
     eventHandler.apply(element, [event]);
-    cd.markForCheck();
-    cd.scheduleCheck();
+    cd.markTreeForCheck();
+    cd.scheduleTreeCheck();
   });
 
   element.addEventListener(eventName, callback, { capture: useCapture });
 }
+
+export function dispatchEvent(element: HTMLElement, event: string, detail: any = {}) {
+  const customEvent = new CustomEvent(event, {
+    detail,
+    bubbles: true,
+  });
+
+  return element.dispatchEvent(customEvent);
+}
+

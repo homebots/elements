@@ -1,6 +1,6 @@
 {
   "name": "@homebots/elements",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Microframework to write modern web apps using latest ES/HTML/CSS stuff",
   "main": "./index.js",
   "typings": "./dist/index.d.ts",

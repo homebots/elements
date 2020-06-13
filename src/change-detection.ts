@@ -41,8 +41,9 @@ export interface ChangeDetector {
   beforeCheck(fn: AnyFunction): void;
   afterCheck(fn: AnyFunction): void;
 
-  markForCheck(): void;
-  scheduleCheck(): void;
+  markAsDirtyAndCheck(): void;
+  markTreeForCheck(): void;
+  scheduleTreeCheck(): void;
   check(): void;
   checkTree(): void;
   unregister(): void;
@@ -107,9 +108,17 @@ export class ReactiveChangeDetector implements ChangeDetector {
     });
   }
 
-  markForCheck() {
+  markTreeForCheck() {
     this.state = 'dirty';
-    this.children.forEach(child => child.markForCheck());
+    this.children.forEach(child => child.markTreeForCheck());
+  }
+
+  markAsDirtyAndCheck() {
+    this.markTreeForCheck();
+
+    if (!this.timer) {
+      this.scheduleTreeCheck();
+    }
   }
 
   check() {
@@ -122,7 +131,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
     this.state = 'checking';
 
     this.watchers.forEach(watcher => {
-      const newValue = this.run(watcher.expression, this.target, []);
+      const newValue = this.runWatcher(watcher.expression, this.target, []);
       const lastValue = watcher.lastValue;
 
       const useEquals = watcher.useEquals;
@@ -143,11 +152,11 @@ export class ReactiveChangeDetector implements ChangeDetector {
         hasInputChanges = true;
       }
 
-      if (watcher.callback) {
-        this.run(watcher.callback, null, [newValue, lastValue]);
-      }
-
       watcher.lastValue = useEquals ? clone(newValue) : newValue;
+
+      if (watcher.callback) {
+        this.runWatcherCallback(watcher.callback, null, [newValue, lastValue]);
+      }
     });
 
     if (!hasInputChanges) {
@@ -157,11 +166,19 @@ export class ReactiveChangeDetector implements ChangeDetector {
     this._afterCheck.forEach(fn => fn(inputChanges));
 
     if (this.state !== 'checking') {
-      this.scheduleCheck();
+      this.scheduleTreeCheck();
       return;
     }
 
     this.state = 'checked';
+  }
+
+  protected runWatcher(...args: any[]) {
+    return this.run.apply(this, args);
+  }
+
+  protected runWatcherCallback(...args: any[]) {
+    return this.run.apply(this, args);
   }
 
   checkTree() {
@@ -169,7 +186,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
     this.children.forEach(cd => cd.checkTree());
   }
 
-  scheduleCheck() {
+  scheduleTreeCheck() {
     if (this.timer) {
       clearTimeout(this.timer);
     }
@@ -182,10 +199,6 @@ export class ReactiveChangeDetector implements ChangeDetector {
 
   fork(target?: any) {
     return new ReactiveChangeDetector(target || this.target, this);
-  }
-
-  private onAfterCheck(changes: Changes) {
-
   }
 }
 
@@ -219,6 +232,14 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
     return new ZoneChangeDetector(component, this);
   }
 
+  protected runWatcherCallback(callback: Function, applyThis?: any, applyArgs?: any[]) {
+    return this.zone.runGuarded(callback, applyThis, applyArgs, this.id);
+  }
+
+  protected runWatcher(...args: any[]) {
+    return super.run.apply(this, args);
+  }
+
   onInvoke(delegate: ZoneDelegate, _: Zone, target: Zone, callback: VoidFunction, applyThis: any, applyArgs: any[], source: string) {
     const output = delegate.invoke(target, callback, applyThis, applyArgs);
     this.scheduleZoneCheck(target);
@@ -242,7 +263,7 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
 
   private scheduleZoneCheck(zone: Zone) {
     const changeDetector: ChangeDetector = zone.get('changeDetector');
-    changeDetector.markForCheck();
-    changeDetector.scheduleCheck();
+
+    changeDetector.markAsDirtyAndCheck();
   }
 }

@@ -63,3 +63,12 @@ export class ExecutionContext {
   }
 }
 
+class NullContext_ extends ExecutionContext {
+  constructor() {
+    super(null);
+  }
+
+  addLocals() {}
+}
+
+export const NullContext = new NullContext_();
