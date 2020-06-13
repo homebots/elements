@@ -1,11 +1,9 @@
-import { Subject } from 'rxjs';
 import { ChangeDetector } from './change-detection';
-import { Fn } from './utils';
 import { ExecutionContext } from './execution-context';
 
 export type EventCallback<T = any> = (event: T) => void;
 
-export interface EventEmitter<T> {
+export interface EventEmitter<T = any> {
   emit(data: T): void;
 }
 
@@ -13,7 +11,7 @@ export class DomEventEmitter<T> implements EventEmitter<T> {
   constructor(
     private element: HTMLElement,
     private event: string,
-  ) {}
+  ) { }
 
   emit(data: T) {
     dispatchEvent(this.element, this.event, data);
@@ -23,8 +21,16 @@ export class DomEventEmitter<T> implements EventEmitter<T> {
 export function Output(eventName: string) {
   return function (target: any, property: string) {
     // NOTE: DOM event names are always lower case
-    const emitter = new DomEventEmitter<any>(this, eventName.toLowerCase());
-    Object.defineProperty(target, property, { value: emitter });
+    let emitter: EventEmitter;
+    Object.defineProperty(target, property, {
+      get() {
+        if (!emitter) {
+          emitter = new DomEventEmitter<any>(this, eventName.toLowerCase());
+        }
+
+        return emitter;
+      }
+    });
   };
 }
 

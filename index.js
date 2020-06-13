@@ -4461,8 +4461,13 @@ exports.DomEventEmitter = DomEventEmitter;
 function Output(eventName) {
     return function (target, property) {
         // NOTE: DOM event names are always lower case
-        const emitter = new DomEventEmitter(this, eventName.toLowerCase());
-        Object.defineProperty(target, property, { value: emitter });
+        let emitter;
+        Object.defineProperty(target, property, { get() {
+                if (!emitter) {
+                    emitter = new DomEventEmitter(this, eventName.toLowerCase());
+                }
+                return emitter;
+            } });
     };
 }
 exports.Output = Output;
