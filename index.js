@@ -4313,7 +4313,7 @@ var inputs_3 = inputs.INPUTS_METADATA;
 
 var domHelpers = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DomHelpers = exports.TemplateContainer = void 0;
+exports.Children = exports.Child = exports.DomHelpers = exports.TemplateContainer = void 0;
 
 
 
@@ -4369,6 +4369,23 @@ let DomHelpers = /** @class */ (() => {
             changeDetector.watch(valueGetter, (value) => value ?
                 element.classList.add(className) :
                 element.classList.remove(className));
+        }
+        addEventListener(changeDetector, executionContext, element, eventNameAndSuffix, expression) {
+            const eventHandler = ($event) => executionContext.run(expression, { $event });
+            const [eventName, suffix] = eventNameAndSuffix.split('.');
+            const useCapture = eventName === 'focus' || eventName === 'blur';
+            const callback = (event) => changeDetector.run(() => {
+                if (suffix === 'once') {
+                    element.removeEventListener(eventName, callback, { capture: useCapture });
+                }
+                if (suffix === 'stop') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                eventHandler.apply(element, [event]);
+                changeDetector.markAsDirtyAndCheck();
+            });
+            element.addEventListener(eventName, callback, { capture: useCapture });
         }
         readReferences(_, executionContext, element, attribute, __) {
             executionContext.addLocals({ [attribute]: element });
@@ -4438,74 +4455,37 @@ let DomHelpers = /** @class */ (() => {
     return DomHelpers;
 })();
 exports.DomHelpers = DomHelpers;
+function Child(selector, isStatic) {
+    return (target, property) => {
+        let node;
+        Object.defineProperty(target, property, {
+            get() {
+                if (isStatic && node)
+                    return node;
+                return node = (this.shadowRoot || this).querySelector(selector);
+            }
+        });
+    };
+}
+exports.Child = Child;
+function Children(selector) {
+    return (target, property) => {
+        Object.defineProperty(target, property, {
+            get() {
+                return (this.shadowRoot || this).querySelectorAll(selector);
+            }
+        });
+    };
+}
+exports.Children = Children;
 
 });
 
 unwrapExports(domHelpers);
-var domHelpers_1 = domHelpers.DomHelpers;
-var domHelpers_2 = domHelpers.TemplateContainer;
-
-var events = createCommonjsModule(function (module, exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.dispatchEvent = exports.addEventListener = exports.Output = exports.DomEventEmitter = void 0;
-class DomEventEmitter {
-    constructor(element, event) {
-        this.element = element;
-        this.event = event;
-    }
-    emit(data) {
-        dispatchEvent(this.element, this.event, data);
-    }
-}
-exports.DomEventEmitter = DomEventEmitter;
-function Output(eventName) {
-    return function (target, property) {
-        // NOTE: DOM event names are always lower case
-        let emitter;
-        Object.defineProperty(target, property, { get() {
-                if (!emitter) {
-                    emitter = new DomEventEmitter(this, eventName.toLowerCase());
-                }
-                return emitter;
-            } });
-    };
-}
-exports.Output = Output;
-function addEventListener(cd, executionContext, element, eventNameAndSuffix, expression) {
-    const eventHandler = ($event) => executionContext.run(expression, { $event });
-    const [eventName, suffix] = eventNameAndSuffix.split('.');
-    const useCapture = eventName === 'focus' || eventName === 'blur';
-    const callback = (event) => cd.run(() => {
-        if (suffix === 'once') {
-            element.removeEventListener(eventName, callback, { capture: useCapture });
-        }
-        if (suffix === 'stop') {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        eventHandler.apply(element, [event]);
-        cd.markTreeForCheck();
-        cd.scheduleTreeCheck();
-    });
-    element.addEventListener(eventName, callback, { capture: useCapture });
-}
-exports.addEventListener = addEventListener;
-function dispatchEvent(element, event, detail = {}) {
-    const customEvent = new CustomEvent(event, {
-        detail,
-        bubbles: true,
-    });
-    return element.dispatchEvent(customEvent);
-}
-exports.dispatchEvent = dispatchEvent;
-
-});
-
-unwrapExports(events);
-var events_1 = events.dispatchEvent;
-var events_2 = events.addEventListener;
-var events_3 = events.Output;
-var events_4 = events.DomEventEmitter;
+var domHelpers_1 = domHelpers.Children;
+var domHelpers_2 = domHelpers.Child;
+var domHelpers_3 = domHelpers.DomHelpers;
+var domHelpers_4 = domHelpers.TemplateContainer;
 
 var ifContainer = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4541,10 +4521,9 @@ let IfContainer = /** @class */ (() => {
             const nodes = templateNodes.map(n => n.cloneNode(true));
             fragment.append(...nodes);
             nodes.forEach(node => this.dom.compileTree(node, this.changeDetector, this.executionContext));
-            this.changeDetector.markTreeForCheck();
-            this.changeDetector.scheduleTreeCheck();
+            this.changeDetector.markAsDirtyAndCheck();
             utils.setTimeoutNative(() => {
-                this.template.parentNode.appendChild(fragment);
+                template.parentNode.insertBefore(fragment, this.template);
                 this.removeNodes();
                 this.nodes = nodes;
             }, 2);
@@ -4609,8 +4588,7 @@ let ForContainer = /** @class */ (() => {
                 return { nodes, context };
             });
             children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node, changeDetector, o.context)));
-            changeDetector.markTreeForCheck();
-            changeDetector.scheduleTreeCheck();
+            changeDetector.markAsDirtyAndCheck();
             utils.setTimeoutNative(() => {
                 this.removeNodes();
                 this.nodes = allNodes;
@@ -4717,7 +4695,6 @@ exports.Application = exports.ApplicationRef = void 0;
 
 
 
-
 exports.ApplicationRef = Symbol('ApplicationRef');
 class Application {
     constructor(rootNode, providers) {
@@ -4730,7 +4707,7 @@ class Application {
         const containerRegistry = injector$1.get(registry.ContainerRegistry);
         syntaxRules$1.addRule(a => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
         syntaxRules$1.addRule((a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE', domUtils.createTemplateContainerTarget.bind(domUtils));
-        syntaxRules$1.addRule(a => a.charAt(0) === '(', events.addEventListener);
+        syntaxRules$1.addRule(a => a.charAt(0) === '(', domUtils.addEventListener.bind(domUtils));
         syntaxRules$1.addRule(a => a.charAt(0) === '[' || a.charAt(0) === '*', domUtils.watchExpressionAndUpdateProperty.bind(domUtils));
         syntaxRules$1.addRule(a => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
         syntaxRules$1.addRule(a => a.startsWith('[class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
@@ -4738,7 +4715,7 @@ class Application {
         containerRegistry.set('for', forContainer.ForContainer);
     }
     tick() {
-        this.changeDetector.scheduleTreeCheck();
+        this.changeDetector.markAsDirtyAndCheck();
     }
 }
 exports.Application = Application;
@@ -8347,7 +8324,7 @@ var _esm5 = /*#__PURE__*/Object.freeze({
 
 var component = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addHostAttributes = exports.attachShadowDom = exports.createComponentInjector = exports.findParentComponent = exports.createComponentClass = exports.Component = exports.TemplateRef = void 0;
+exports.addHostAttributes = exports.addTemplate = exports.createComponentInjector = exports.findParentComponent = exports.createComponentClass = exports.Component = exports.TemplateRef = void 0;
 
 
 
@@ -8372,14 +8349,14 @@ function createComponentClass(ComponentClass, options) {
                 const injector = createComponentInjector(this, options);
                 const changeDetector = injector.get(changeDetection.ChangeDetectorRef);
                 const executionContext$1 = new executionContext.ExecutionContext(this);
-                injector.register({ type: executionContext.ExecutionContext, useValue: executionContext$1 });
                 const dom = injector.get(domHelpers.DomHelpers);
-                attachShadowDom(this, options);
+                injector.register({ type: executionContext.ExecutionContext, useValue: executionContext$1 });
+                addTemplate(this, options);
                 addHostAttributes(this, options);
                 dom.compileTree(this.shadowRoot || this, changeDetector, executionContext$1);
                 changeDetector.beforeCheck(() => this.onBeforeCheck());
                 changeDetector.afterCheck(changes => changes && this.onChanges(changes));
-                changeDetector.scheduleTreeCheck();
+                changeDetector.markAsDirtyAndCheck();
                 this.onInit();
             }
             catch (error) {
@@ -8415,29 +8392,47 @@ exports.findParentComponent = findParentComponent;
 function createComponentInjector(component, options) {
     const parentComponent = component.parentComponent;
     const parentInjector = parentComponent ? parentComponent[injector.InjectorSymbol] : null;
-    const parentChangeDetector = (parentInjector === null || parentInjector === void 0 ? void 0 : parentInjector.get(changeDetection.ChangeDetectorRef)) || null;
     const injector$1 = new injector.Injector(parentInjector, options.providers);
+    if (!injector$1.has(changeDetection.ChangeDetectorRef, false)) {
+        const parentChangeDetector = (parentInjector === null || parentInjector === void 0 ? void 0 : parentInjector.get(changeDetection.ChangeDetectorRef)) || null;
+        if (parentChangeDetector) {
+            const changeDetector = parentChangeDetector === null || parentChangeDetector === void 0 ? void 0 : parentChangeDetector.fork(component);
+            injector$1.register({ type: changeDetection.ChangeDetectorRef, useValue: changeDetector });
+        }
+        else {
+            injector$1.register({ type: changeDetection.ChangeDetectorRef, useClass: changeDetection.ReactiveChangeDetector });
+        }
+    }
+    component[injector.InjectorSymbol] = injector$1;
+    return injector$1;
+}
+exports.createComponentInjector = createComponentInjector;
+function addTemplate(target, options) {
+    const useShadowDom = options.shadowDom !== false;
     let template = options.template || '';
     if (options.styles) {
         template += `<style>${options.styles}</style>`;
     }
     const templateRef = utils.createTemplateFromHtml(template);
-    const changeDetector = parentChangeDetector === null || parentChangeDetector === void 0 ? void 0 : parentChangeDetector.fork(component);
-    injector$1.register({ type: exports.TemplateRef, useValue: templateRef });
-    injector$1.register({ type: changeDetection.ChangeDetectorRef, useValue: changeDetector });
-    component[injector.InjectorSymbol] = injector$1;
-    return injector$1;
-}
-exports.createComponentInjector = createComponentInjector;
-function attachShadowDom(target, options) {
-    const useShadowDom = Boolean(options.template || options.useShadowDom || options.shadowDomOptions);
+    injector.getInjectorFrom(target).register({ type: exports.TemplateRef, useValue: templateRef });
     if (useShadowDom) {
-        const templateRef = injector.getInjectorFrom(target).get(exports.TemplateRef);
-        const shadowRoot = target.attachShadow(options.shadowDomOptions || { mode: 'open' });
+        const shadowDomOptions = options.shadowDom !== true && options.shadowDom || { mode: 'open' };
+        const shadowRoot = target.attachShadow(shadowDomOptions);
         shadowRoot.appendChild(templateRef.content.cloneNode(true));
+        return;
     }
+    const content = templateRef.content.cloneNode(true);
+    const hasSlot = template.indexOf('<slot') !== -1;
+    if (hasSlot) {
+        const currentContent = document.createDocumentFragment();
+        target.childNodes.forEach(node => currentContent.appendChild(node));
+        target.appendChild(content);
+        (target.querySelector('slot') || target).appendChild(currentContent);
+        return;
+    }
+    target.appendChild(content);
 }
-exports.attachShadowDom = attachShadowDom;
+exports.addTemplate = addTemplate;
 function addHostAttributes(target, options) {
     const { hostAttributes } = options;
     if (!hostAttributes)
@@ -8452,12 +8447,56 @@ exports.addHostAttributes = addHostAttributes;
 
 unwrapExports(component);
 var component_1 = component.addHostAttributes;
-var component_2 = component.attachShadowDom;
+var component_2 = component.addTemplate;
 var component_3 = component.createComponentInjector;
 var component_4 = component.findParentComponent;
 var component_5 = component.createComponentClass;
 var component_6 = component.Component;
 var component_7 = component.TemplateRef;
+
+var events = createCommonjsModule(function (module, exports) {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.dispatchEvent = exports.Output = exports.DomEventEmitter = void 0;
+class DomEventEmitter {
+    constructor(element, event) {
+        this.element = element;
+        this.event = event;
+    }
+    emit(data) {
+        dispatchEvent(this.element, this.event, data);
+    }
+}
+exports.DomEventEmitter = DomEventEmitter;
+function Output(eventName) {
+    return function (target, property) {
+        // NOTE: DOM event names are always lower case
+        let emitter;
+        Object.defineProperty(target, property, {
+            get() {
+                if (!emitter) {
+                    emitter = new DomEventEmitter(this, eventName.toLowerCase());
+                }
+                return emitter;
+            }
+        });
+    };
+}
+exports.Output = Output;
+function dispatchEvent(element, event, detail = {}) {
+    const customEvent = new CustomEvent(event, {
+        detail,
+        bubbles: true,
+    });
+    return element.dispatchEvent(customEvent);
+}
+exports.dispatchEvent = dispatchEvent;
+
+});
+
+unwrapExports(events);
+var events_1 = events.dispatchEvent;
+var events_2 = events.Output;
+var events_3 = events.DomEventEmitter;
 
 var src = createCommonjsModule(function (module, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -8474,7 +8513,7 @@ Object.defineProperty(exports, "ChangeDetectorRef", { enumerable: true, get: fun
 Object.defineProperty(exports, "ZoneChangeDetector", { enumerable: true, get: function () { return changeDetection.ZoneChangeDetector; } });
 
 Object.defineProperty(exports, "addHostAttributes", { enumerable: true, get: function () { return component.addHostAttributes; } });
-Object.defineProperty(exports, "attachShadowDom", { enumerable: true, get: function () { return component.attachShadowDom; } });
+Object.defineProperty(exports, "addTemplate", { enumerable: true, get: function () { return component.addTemplate; } });
 Object.defineProperty(exports, "Component", { enumerable: true, get: function () { return component.Component; } });
 Object.defineProperty(exports, "createComponentClass", { enumerable: true, get: function () { return component.createComponentClass; } });
 Object.defineProperty(exports, "createComponentInjector", { enumerable: true, get: function () { return component.createComponentInjector; } });
@@ -8484,8 +8523,10 @@ Object.defineProperty(exports, "TemplateRef", { enumerable: true, get: function 
 Object.defineProperty(exports, "ContainerRegistry", { enumerable: true, get: function () { return registry.ContainerRegistry; } });
 
 Object.defineProperty(exports, "DomHelpers", { enumerable: true, get: function () { return domHelpers.DomHelpers; } });
+Object.defineProperty(exports, "Child", { enumerable: true, get: function () { return domHelpers.Child; } });
+Object.defineProperty(exports, "Children", { enumerable: true, get: function () { return domHelpers.Children; } });
+Object.defineProperty(exports, "TemplateContainer", { enumerable: true, get: function () { return domHelpers.TemplateContainer; } });
 
-Object.defineProperty(exports, "addEventListener", { enumerable: true, get: function () { return events.addEventListener; } });
 Object.defineProperty(exports, "DomEventEmitter", { enumerable: true, get: function () { return events.DomEventEmitter; } });
 Object.defineProperty(exports, "Output", { enumerable: true, get: function () { return events.Output; } });
 Object.defineProperty(exports, "dispatchEvent", { enumerable: true, get: function () { return events.dispatchEvent; } });
@@ -8516,7 +8557,7 @@ var src_6 = src.ReactiveChangeDetector;
 var src_7 = src.ChangeDetectorRef;
 var src_8 = src.ZoneChangeDetector;
 var src_9 = src.addHostAttributes;
-var src_10 = src.attachShadowDom;
+var src_10 = src.addTemplate;
 var src_11 = src.Component;
 var src_12 = src.createComponentClass;
 var src_13 = src.createComponentInjector;
@@ -8524,20 +8565,22 @@ var src_14 = src.findParentComponent;
 var src_15 = src.TemplateRef;
 var src_16 = src.ContainerRegistry;
 var src_17 = src.DomHelpers;
-var src_18 = src.addEventListener;
-var src_19 = src.DomEventEmitter;
-var src_20 = src.Output;
-var src_21 = src.dispatchEvent;
-var src_22 = src.ExecutionContext;
-var src_23 = src.NullContext;
-var src_24 = src.getInjectorFrom;
-var src_25 = src.Inject;
-var src_26 = src.Injectable;
-var src_27 = src.Injector;
-var src_28 = src.InjectorSymbol;
-var src_29 = src.Input;
-var src_30 = src.createTemplateFromHtml;
-var src_31 = src.noop;
+var src_18 = src.Child;
+var src_19 = src.Children;
+var src_20 = src.TemplateContainer;
+var src_21 = src.DomEventEmitter;
+var src_22 = src.Output;
+var src_23 = src.dispatchEvent;
+var src_24 = src.ExecutionContext;
+var src_25 = src.NullContext;
+var src_26 = src.getInjectorFrom;
+var src_27 = src.Inject;
+var src_28 = src.Injectable;
+var src_29 = src.Injector;
+var src_30 = src.InjectorSymbol;
+var src_31 = src.Input;
+var src_32 = src.createTemplateFromHtml;
+var src_33 = src.noop;
 
 export default index;
-export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_7 as ChangeDetectorRef, src_11 as Component, src_16 as ContainerRegistry, src_19 as DomEventEmitter, src_17 as DomHelpers, src_22 as ExecutionContext, src_25 as Inject, src_26 as Injectable, src_27 as Injector, src_28 as InjectorSymbol, src_29 as Input, src_23 as NullContext, src_20 as Output, src_6 as ReactiveChangeDetector, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_18 as addEventListener, src_9 as addHostAttributes, src_10 as attachShadowDom, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_30 as createTemplateFromHtml, src_21 as dispatchEvent, src_5 as domReady, src_14 as findParentComponent, src_24 as getInjectorFrom, src_31 as noop };
+export { src_1 as Application, src_2 as ApplicationRef, src_4 as BOOTSTRAP, src_7 as ChangeDetectorRef, src_18 as Child, src_19 as Children, src_11 as Component, src_16 as ContainerRegistry, src_21 as DomEventEmitter, src_17 as DomHelpers, src_24 as ExecutionContext, src_27 as Inject, src_28 as Injectable, src_29 as Injector, src_30 as InjectorSymbol, src_31 as Input, src_25 as NullContext, src_22 as Output, src_6 as ReactiveChangeDetector, src_20 as TemplateContainer, src_15 as TemplateRef, src_8 as ZoneChangeDetector, src_9 as addHostAttributes, src_10 as addTemplate, src_3 as bootstrap, src_12 as createComponentClass, src_13 as createComponentInjector, src_32 as createTemplateFromHtml, src_23 as dispatchEvent, src_5 as domReady, src_14 as findParentComponent, src_26 as getInjectorFrom, src_33 as noop };

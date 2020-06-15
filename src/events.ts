@@ -34,28 +34,6 @@ export function Output(eventName: string) {
   };
 }
 
-export function addEventListener(cd: ChangeDetector, executionContext: ExecutionContext, element: HTMLElement, eventNameAndSuffix: string, expression: string) {
-  const eventHandler = ($event: Event) => executionContext.run(expression, { $event });
-  const [eventName, suffix] = eventNameAndSuffix.split('.');
-  const useCapture = eventName === 'focus' || eventName === 'blur';
-  const callback = (event: Event) => cd.run(() => {
-    if (suffix === 'once') {
-      element.removeEventListener(eventName, callback, { capture: useCapture });
-    }
-
-    if (suffix === 'stop') {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-
-    eventHandler.apply(element, [event]);
-    cd.markTreeForCheck();
-    cd.scheduleTreeCheck();
-  });
-
-  element.addEventListener(eventName, callback, { capture: useCapture });
-}
-
 export function dispatchEvent(element: HTMLElement, event: string, detail: any = {}) {
   const customEvent = new CustomEvent(event, {
     detail,

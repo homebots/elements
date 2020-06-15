@@ -91,6 +91,34 @@ export class DomHelpers {
     );
   }
 
+  addEventListener(
+    changeDetector: ChangeDetector,
+    executionContext: ExecutionContext,
+    element: HTMLElement,
+    eventNameAndSuffix: string,
+    expression: string
+  ) {
+    const eventHandler = ($event: Event) => executionContext.run(expression, { $event });
+    const [eventName, suffix] = eventNameAndSuffix.split('.');
+    const useCapture = eventName === 'focus' || eventName === 'blur';
+    const callback = (event: Event) => changeDetector.run(() => {
+      if (suffix === 'once') {
+        element.removeEventListener(eventName, callback, { capture: useCapture });
+      }
+
+      if (suffix === 'stop') {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      eventHandler.apply(element, [event]);
+      changeDetector.markAsDirtyAndCheck();
+    });
+
+    element.addEventListener(eventName, callback, { capture: useCapture });
+  }
+
+
   readReferences(
     _: ChangeDetector,
     executionContext: ExecutionContext,
@@ -169,5 +197,27 @@ export class DomHelpers {
 
     this.compileElement(elementOrShadowRoot as HTMLElement, changeDetector, executionContext);
   }
+}
 
+export function Child(selector: string, isStatic?: boolean) {
+  return (target: any, property: string) => {
+    let node: HTMLElement;
+
+    Object.defineProperty(target, property, {
+      get() {
+        if (isStatic && node) return node;
+        return node = (this.shadowRoot || this).querySelector(selector);
+      }
+    })
+  }
+}
+
+export function Children(selector: string) {
+  return (target: any, property: string) => {
+    Object.defineProperty(target, property, {
+      get() {
+        return (this.shadowRoot || this).querySelectorAll(selector);
+      }
+    })
+  }
 }

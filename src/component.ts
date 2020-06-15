@@ -1,6 +1,6 @@
 import { Subscription } from 'rxjs';
 import { BOOTSTRAP } from './bootstrap';
-import { ChangeDetectorRef, Changes } from './change-detection';
+import { ChangeDetectorRef, Changes, ReactiveChangeDetector } from './change-detection';
 import { ExecutionContext } from './execution-context';
 import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
 import { createTemplateFromHtml, noop } from './utils';
@@ -19,9 +19,8 @@ export interface ComponentOptions {
   tag: string;
   template?: string;
   styles?: string;
-  useShadowDom?: boolean;
+  shadowDom?: boolean | ShadowRootInit;
   extensionOptions?: { extends: string; };
-  shadowDomOptions?: ShadowRootInit;
   hostAttributes?: HostAttributes;
   providers?: Provider[];
 }
@@ -80,16 +79,17 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
         const injector = createComponentInjector(this, options);
         const changeDetector = injector.get(ChangeDetectorRef);
         const executionContext = new ExecutionContext(this);
-        injector.register({ type: ExecutionContext, useValue: executionContext });
         const dom = injector.get(DomHelpers);
 
-        attachShadowDom(this, options);
+        injector.register({ type: ExecutionContext, useValue: executionContext });
+
+        addTemplate(this, options);
         addHostAttributes(this, options);
         dom.compileTree(this.shadowRoot || this, changeDetector, executionContext);
 
         changeDetector.beforeCheck(() => this.onBeforeCheck());
         changeDetector.afterCheck(changes => changes && this.onChanges(changes));
-        changeDetector.scheduleTreeCheck();
+        changeDetector.markAsDirtyAndCheck();
 
         this.onInit();
       } catch (error) {
@@ -130,8 +130,26 @@ export function findParentComponent(component: HTMLElement): HTMLElement | null 
 export function createComponentInjector(component: CustomElement, options: ComponentOptions) {
   const parentComponent = component.parentComponent;
   const parentInjector: Injector | null = parentComponent ? parentComponent[InjectorSymbol] : null;
-  const parentChangeDetector = parentInjector?.get(ChangeDetectorRef) || null;
   const injector = new Injector(parentInjector, options.providers);
+
+  if (!injector.has(ChangeDetectorRef, false)) {
+    const parentChangeDetector = parentInjector?.get(ChangeDetectorRef) || null;
+
+    if (parentChangeDetector) {
+      const changeDetector = parentChangeDetector?.fork(component);
+      injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
+    } else {
+      injector.register({ type: ChangeDetectorRef, useClass: ReactiveChangeDetector });
+    }
+  }
+
+  component[InjectorSymbol] = injector;
+
+  return injector;
+}
+
+export function addTemplate(target: CustomElement, options: ComponentOptions) {
+  const useShadowDom = options.shadowDom !== false;
 
   let template = options.template || '';
   if (options.styles) {
@@ -139,25 +157,27 @@ export function createComponentInjector(component: CustomElement, options: Compo
   }
 
   const templateRef = createTemplateFromHtml(template);
-  const changeDetector = parentChangeDetector?.fork(component);
-
-  injector.register({ type: TemplateRef, useValue: templateRef });
-  injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
-
-  component[InjectorSymbol] = injector;
-
-  return injector;
-}
-
-export function attachShadowDom(target: CustomElement, options: ComponentOptions) {
-  const useShadowDom = Boolean(options.template || options.useShadowDom || options.shadowDomOptions);
+  getInjectorFrom(target).register({ type: TemplateRef, useValue: templateRef });
 
   if (useShadowDom) {
-    const templateRef: HTMLTemplateElement = getInjectorFrom(target).get(TemplateRef);
-    const shadowRoot = target.attachShadow(options.shadowDomOptions || { mode: 'open' });
-
+    const shadowDomOptions = options.shadowDom !== true && options.shadowDom || { mode: 'open' };
+    const shadowRoot = target.attachShadow(shadowDomOptions);
     shadowRoot.appendChild(templateRef.content.cloneNode(true));
+    return;
   }
+
+  const content = templateRef.content.cloneNode(true);
+  const hasSlot = template.indexOf('<slot') !== -1;
+
+  if (hasSlot) {
+    const currentContent = document.createDocumentFragment();
+    target.childNodes.forEach(node => currentContent.appendChild(node));
+    target.appendChild(content);
+    (target.querySelector('slot') || target).appendChild(currentContent);
+    return;
+  }
+
+  target.appendChild(content);
 }
 
 export function addHostAttributes(target: CustomElement, options: ComponentOptions) {
