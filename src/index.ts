@@ -5,7 +5,7 @@ export { addHostAttributes, addTemplate, Component, ComponentOptions, createComp
 export { ContainerRegistry } from './containers/registry';
 export { DomHelpers, Child, Children, ContainerTarget, TemplateContainer } from './dom-helpers';
 export { DomEventEmitter, EventCallback, EventEmitter, Output, dispatchEvent } from './events';
-export { ExecutionContext, ExecutionLocals, NullContext } from './execution-context';
+export { ExecutionContext, ExecutionLocals, SealedExecutionContext, NullContext } from './execution-context';
 export { getInjectorFrom, Inject, Injectable, InjectableOptions, InjectionToken, Injector, InjectorSymbol, Provider, Type } from './injector';
 export { Input, InputOptions } from './inputs';
 export { createTemplateFromHtml, noop } from './utils';

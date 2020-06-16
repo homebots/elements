@@ -10,7 +10,7 @@ export class ExecutionContext {
   locals: ExecutionLocals;
 
   constructor(
-    private component: HTMLElement,
+    private thisValue: object,
     private parent?: ExecutionContext,
   ) {}
 
@@ -23,16 +23,12 @@ export class ExecutionContext {
   }
 
   fork(newContext?: HTMLElement) {
-    return new ExecutionContext(newContext || this.component, this);
+    return new ExecutionContext(newContext || this.thisValue, this);
   }
 
   run(expression: string, localValues?: ExecutionLocals) {
     const fn = this.compile(expression, localValues);
-    try {
-      return fn();
-    } catch (error) {
-      console.log(error);
-    }
+    return fn();
   }
 
   compile(expression: string, localValues?: ExecutionLocals) {
@@ -45,7 +41,7 @@ export class ExecutionContext {
     }
 
     const localsAsArray = localsByName.map(key => locals[key]);
-    return expressionCache.get(cacheKey).bind(this.component, ...localsAsArray);
+    return expressionCache.get(cacheKey).bind(this.thisValue, ...localsAsArray);
   }
 
   private getLocals(additionalValues?: ExecutionLocals) {
@@ -67,12 +63,13 @@ export class ExecutionContext {
   }
 }
 
-class NullContext_ extends ExecutionContext {
-  constructor() {
-    super(null);
+export class SealedExecutionContext extends ExecutionContext {
+  constructor(parent?: ExecutionContext) {
+    super(null, parent);
   }
 
-  addLocals() {}
+  addLocals(_: ExecutionLocals) {}
+  reset() {}
 }
 
-export const NullContext = new NullContext_();
+export const NullContext = new SealedExecutionContext();
