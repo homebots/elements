@@ -4495,6 +4495,9 @@ exports.IfContainer = void 0;
 
 
 
+const IF = 0;
+const ELSE = 1;
+const NONE = 2;
 let IfContainer = /** @class */ (() => {
     class IfContainer {
         constructor(template, changeDetector, executionContext) {
@@ -4502,17 +4505,22 @@ let IfContainer = /** @class */ (() => {
             this.changeDetector = changeDetector;
             this.executionContext = executionContext;
             this.nodes = [];
+            this.state = 0 | 1 | 2;
         }
         onChanges() {
-            this.removeNodes();
-            if (this.if) {
-                this.createNodes(this.template);
-            }
-            else if (this.else) {
-                this.createNodes(this.else);
-            }
-            else {
-                this.removeNodes();
+            switch (true) {
+                case this.if && this.state !== IF:
+                    this.createNodes(this.template);
+                    this.state = IF;
+                    break;
+                case !this.if && this.else && this.state !== ELSE:
+                    this.createNodes(this.else);
+                    this.state = ELSE;
+                    break;
+                case !this.if && !this.else:
+                    this.removeOldNodes();
+                    this.state = NONE;
+                    break;
             }
         }
         createNodes(template) {
@@ -4524,11 +4532,11 @@ let IfContainer = /** @class */ (() => {
             this.changeDetector.markAsDirtyAndCheck();
             utils.setTimeoutNative(() => {
                 template.parentNode.insertBefore(fragment, this.template);
-                this.removeNodes();
+                this.removeOldNodes();
                 this.nodes = nodes;
             }, 2);
         }
-        removeNodes() {
+        removeOldNodes() {
             this.nodes.forEach(node => node.parentNode.removeChild(node));
             this.nodes = [];
         }
@@ -4561,43 +4569,80 @@ exports.ForContainer = void 0;
 
 
 
-
 let ForContainer = /** @class */ (() => {
     class ForContainer {
         constructor(template, changeDetector, executionContext) {
             this.template = template;
             this.changeDetector = changeDetector;
             this.executionContext = executionContext;
-            this.nodes = [];
+            this.children = [];
         }
-        onChanges() {
+        get templateNodes() {
+            if (!this._templateNodes) {
+                this._templateNodes = Array.from(this.template.content.children);
+            }
+            return this._templateNodes;
+        }
+        onChanges(changes) {
             if (!this.of || !this.for) {
+                this.removeAllChildren();
                 return;
             }
+            if (changes.for) {
+                this.resetExecutionContext();
+            }
             const items = Array.from(this.of);
-            const changeDetector = this.changeDetector;
-            const templateNodes = Array.from(this.template.content.children);
             const fragment = document.createDocumentFragment();
-            const allNodes = [];
-            const children = items.map((item, index) => {
-                const context = this.executionContext.fork();
-                const nodes = templateNodes.map(n => n.cloneNode(true));
-                allNodes.push(...nodes);
-                context.addLocals({ [this.for]: item, index });
-                fragment.append(...nodes);
-                return { nodes, context };
+            this.adjustChildrenLength(items.length);
+            items.forEach((item, index) => {
+                const child = this.children[index];
+                const locals = {};
+                locals[this.for] = item;
+                locals.index = index;
+                child.executionContext.addLocals(locals);
+                if (child.detached) {
+                    fragment.append(...child.nodes);
+                    child.detached = false;
+                }
             });
-            children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node, changeDetector, o.context)));
-            changeDetector.markAsDirtyAndCheck();
-            utils.setTimeoutNative(() => {
-                this.removeNodes();
-                this.nodes = allNodes;
-                this.template.parentNode.appendChild(fragment);
-            }, 2);
+            this.changeDetector.markAsDirtyAndCheck();
+            requestAnimationFrame(() => this.template.parentNode.appendChild(fragment));
         }
-        removeNodes() {
-            this.nodes.forEach(node => node.parentNode.removeChild(node));
-            this.nodes = [];
+        resetExecutionContext() {
+            this.children.forEach(node => node.executionContext.reset());
+        }
+        compileChild(child) {
+            child.nodes.forEach(node => this.dom.compileTree(node, this.changeDetector, child.executionContext));
+        }
+        createChild() {
+            const nodes = this.templateNodes.map(n => n.cloneNode(true));
+            return {
+                nodes,
+                detached: true,
+                executionContext: this.executionContext.fork(),
+            };
+        }
+        removeChild(child) {
+            child.nodes.forEach(node => node.parentNode.removeChild(node));
+        }
+        removeAllChildren() {
+            if (this.children.length) {
+                this.children.forEach(node => this.removeChild(node));
+                this.children = [];
+            }
+        }
+        adjustChildrenLength(length) {
+            const children = this.children;
+            if (children.length < length) {
+                const newNodes = Array(length - children.length).fill(null).map(() => this.createChild());
+                newNodes.forEach(node => this.compileChild(node));
+                children.push(...newNodes);
+                return;
+            }
+            if (children.length > length) {
+                children.slice(length).forEach(node => this.removeChild(node));
+                children.length = length;
+            }
         }
     }
     tslib_es6.__decorate([
@@ -4632,6 +4677,9 @@ class ExecutionContext {
     }
     addLocals(locals) {
         Object.assign(this.locals || (this.locals = {}), locals);
+    }
+    reset() {
+        this.locals = {};
     }
     fork(newContext) {
         return new ExecutionContext(newContext || this.component, this);
@@ -4743,17 +4791,19 @@ class Bootstrap {
     }
 }
 exports.BOOTSTRAP = new Bootstrap();
+const defaultOptions = {
+    rootNode: document.body,
+    providers: [{ type: changeDetection.ChangeDetectorRef, useValue: new changeDetection.ZoneChangeDetector() }],
+};
 function bootstrap(options) {
     if (!options) {
-        const zoneChangeDetector = new changeDetection.ZoneChangeDetector();
-        options = {
-            rootNode: document.body,
-            providers: [
-                { type: changeDetection.ChangeDetectorRef, useValue: zoneChangeDetector },
-            ]
-        };
+        options = defaultOptions;
     }
     const { rootNode, providers } = options;
+    // let's make sure a change detector is provided
+    if (!providers.find(p => p.type === changeDetection.ChangeDetectorRef)) {
+        providers.push(defaultOptions.providers[0]);
+    }
     domReady().then(function () {
         const app = new application.Application(rootNode || document.body, providers);
         exports.BOOTSTRAP.whenReady(() => app.tick());

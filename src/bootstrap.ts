@@ -27,19 +27,22 @@ export interface BootstrapOptions {
   providers: Provider[];
 }
 
+const defaultOptions = {
+  rootNode: document.body,
+  providers: [{ type: ChangeDetectorRef, useValue: new ZoneChangeDetector() }],
+};
+
 export function bootstrap(options?: BootstrapOptions) {
   if (!options) {
-    const zoneChangeDetector = new ZoneChangeDetector();
-
-    options = {
-      rootNode: document.body,
-      providers: [
-        { type: ChangeDetectorRef, useValue: zoneChangeDetector },
-      ]
-    }
+    options = defaultOptions;
   }
 
   const { rootNode, providers } = options;
+
+  // let's make sure a change detector is provided
+  if (!providers.find(p => p.type === ChangeDetectorRef)) {
+    providers.push(defaultOptions.providers[0]);
+  }
 
   domReady().then(function() {
     const app = new Application(rootNode || document.body, providers);

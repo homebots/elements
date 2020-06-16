@@ -1,16 +1,21 @@
-import { ChangeDetector } from '../change-detection';
+import { ChangeDetector, Changes } from '../change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Input } from '../inputs';
-import { setTimeoutNative } from '../utils';
 import { Inject } from '../injector';
 import { DomHelpers } from '../dom-helpers';
+
+interface ContainerChild {
+  executionContext: ExecutionContext;
+  nodes: Node[];
+  detached: boolean;
+}
 
 export class ForContainer {
   @Input() of: Iterable<any>;
   @Input() for: string;
   @Inject() dom: DomHelpers;
 
-  private nodes: Node[] = [];
+  private children: ContainerChild[] = [];
 
   constructor(
     private template: HTMLTemplateElement,
@@ -18,40 +23,92 @@ export class ForContainer {
     private executionContext: ExecutionContext,
   ) { }
 
-  onChanges() {
+  _templateNodes: Node[];
+
+  get templateNodes() {
+    if (!this._templateNodes) {
+      this._templateNodes = Array.from(this.template.content.children);
+    }
+
+    return this._templateNodes;
+  }
+
+  onChanges(changes: Changes) {
     if (!this.of || !this.for) {
+      this.removeAllChildren();
       return;
     }
 
+    if (changes.for) {
+      this.resetExecutionContext();
+    }
+
     const items = Array.from(this.of);
-    const changeDetector = this.changeDetector;
-    const templateNodes = Array.from(this.template.content.children);
     const fragment = document.createDocumentFragment();
-    const allNodes = [];
 
-    const children = items.map((item, index) => {
-      const context = this.executionContext.fork();
-      const nodes = templateNodes.map(n => n.cloneNode(true));
+    this.adjustChildrenLength(items.length);
+    items.forEach((item, index) => {
+      const child = this.children[index];
+      const locals: any = {};
 
-      allNodes.push(...nodes);
-      context.addLocals({ [this.for]: item, index });
-      fragment.append(...nodes);
+      locals[this.for] = item;
+      locals.index = index;
 
-      return { nodes, context };
+      child.executionContext.addLocals(locals);
+
+      if (child.detached) {
+        fragment.append(...child.nodes);
+        child.detached = false;
+      }
     });
 
-    children.forEach((o) => o.nodes.forEach(node => this.dom.compileTree(node as HTMLElement, changeDetector, o.context)));
-    changeDetector.markAsDirtyAndCheck();
+    this.changeDetector.markAsDirtyAndCheck();
 
-    setTimeoutNative(() => {
-      this.removeNodes();
-      this.nodes = allNodes;
-      this.template.parentNode.appendChild(fragment);
-    }, 2);
+    requestAnimationFrame(() => this.template.parentNode.appendChild(fragment));
   }
 
-  private removeNodes() {
-    this.nodes.forEach(node => node.parentNode.removeChild(node));
-    this.nodes = [];
+  private resetExecutionContext() {
+    this.children.forEach(node => node.executionContext.reset());
+  }
+
+  private compileChild(child: ContainerChild) {
+    child.nodes.forEach(node => this.dom.compileTree(node as HTMLElement, this.changeDetector, child.executionContext));
+  }
+
+  private createChild(): ContainerChild {
+    const nodes = this.templateNodes.map(n => n.cloneNode(true));
+
+    return {
+      nodes,
+      detached: true,
+      executionContext: this.executionContext.fork(),
+    };
+  }
+
+  private removeChild(child: ContainerChild) {
+    child.nodes.forEach(node => node.parentNode.removeChild(node));
+  }
+
+  private removeAllChildren() {
+    if (this.children.length) {
+      this.children.forEach(node => this.removeChild(node));
+      this.children = [];
+    }
+  }
+
+  private adjustChildrenLength(length: number) {
+    const children = this.children;
+
+    if (children.length < length) {
+      const newNodes = Array(length - children.length).fill(null).map(() => this.createChild());
+      newNodes.forEach(node => this.compileChild(node));
+      children.push(...newNodes);
+      return;
+    }
+
+    if (children.length > length) {
+      children.slice(length).forEach(node => this.removeChild(node));
+      children.length = length;
+    }
   }
 }

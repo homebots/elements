@@ -5,6 +5,10 @@ import { setTimeoutNative } from '../utils';
 import { Inject } from '../injector';
 import { DomHelpers } from '../dom-helpers';
 
+const IF = 0;
+const ELSE = 1;
+const NONE = 2;
+
 export class IfContainer {
   @Input() if: boolean;
   @Input() else: HTMLTemplateElement;
@@ -17,16 +21,24 @@ export class IfContainer {
   ) {}
 
   private nodes: Node[] = [];
+  private state = 0 | 1 | 2;
 
   onChanges() {
-    this.removeNodes();
+    switch (true) {
+      case this.if && this.state !== IF:
+        this.createNodes(this.template);
+        this.state = IF;
+        break;
 
-    if (this.if) {
-      this.createNodes(this.template);
-    } else if (this.else) {
-      this.createNodes(this.else);
-    } else {
-      this.removeNodes();
+      case !this.if && this.else && this.state !== ELSE:
+        this.createNodes(this.else);
+        this.state = ELSE;
+        break;
+
+      case !this.if && !this.else:
+        this.removeOldNodes();
+        this.state = NONE;
+        break;
     }
   }
 
@@ -42,12 +54,12 @@ export class IfContainer {
 
     setTimeoutNative(() => {
       template.parentNode.insertBefore(fragment, this.template);
-      this.removeNodes();
+      this.removeOldNodes();
       this.nodes = nodes;
     }, 2);
   }
 
-  private removeNodes() {
+  private removeOldNodes() {
     this.nodes.forEach(node => node.parentNode.removeChild(node));
     this.nodes = [];
   }

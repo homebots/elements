@@ -18,6 +18,10 @@ export class ExecutionContext {
     Object.assign(this.locals || (this.locals = {}), locals);
   }
 
+  reset() {
+    this.locals = {};
+  }
+
   fork(newContext?: HTMLElement) {
     return new ExecutionContext(newContext || this.component, this);
   }
