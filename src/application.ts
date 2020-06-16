@@ -1,6 +1,6 @@
 import { ChangeDetector, ChangeDetectorRef } from './change-detection';
 import { DomHelpers } from './dom-helpers';
-import { InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
+import { InjectionToken, Injector, InjectorSymbol, Provider, Providers } from './injector';
 import { SyntaxRules } from './syntax-rules';
 import { IfContainer } from './containers/if-container';
 import { ForContainer } from './containers/for-container';
@@ -13,7 +13,7 @@ export const ApplicationRef = Symbol('ApplicationRef');
 export class Application {
   private changeDetector: ChangeDetector;
 
-  constructor(rootNode: HTMLElement, providers: Provider[]) {
+  constructor(rootNode: HTMLElement, providers: Providers) {
     const injector = rootNode[InjectorSymbol] = new Injector(null, providers);
     injector.register({ type: ApplicationRef, useValue: this });
     injector.register({ type: ExecutionContext, useValue: NullContext });

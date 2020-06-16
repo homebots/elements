@@ -101,7 +101,7 @@ export class DomHelpers {
     const eventHandler = ($event: Event) => executionContext.run(expression, { $event });
     const [eventName, suffix] = eventNameAndSuffix.split('.');
     const useCapture = eventName === 'focus' || eventName === 'blur';
-    const callback = (event: Event) => changeDetector.run(() => {
+    const callback = (event: Event) => {
       if (suffix === 'once') {
         element.removeEventListener(eventName, callback, { capture: useCapture });
       }
@@ -113,7 +113,7 @@ export class DomHelpers {
 
       eventHandler.apply(element, [event]);
       changeDetector.markAsDirtyAndCheck();
-    });
+    };
 
     element.addEventListener(eventName, callback, { capture: useCapture });
   }

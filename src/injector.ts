@@ -7,8 +7,10 @@ export interface Provider<T = any> {
   deps?: InjectionToken[];
   useClass?: Type<T>;
   useValue?: T;
-  useFactory?: () => T;
+  useFactory?: (...args: any[]) => T;
 }
+
+export type Providers = Array<Provider | Type>;
 
 export const InjectableMetadataKey = 'injectable';
 export const InjectorSymbol = Symbol('injector');
@@ -23,7 +25,7 @@ export interface InjectorApi {
   has(token: InjectionToken, checkParents?: boolean): boolean;
   get<T>(token: InjectionToken<T>): T;
   create<T>(token: InjectionToken<T>, ...args: any[]): T;
-  register(provider: Provider[] | Provider | Type): void;
+  register(provider: Providers | Provider | Type): void;
 }
 
 export class Injector implements InjectorApi {
@@ -31,9 +33,8 @@ export class Injector implements InjectorApi {
   protected cache?= new Map<InjectionToken, unknown>();
   readonly root: boolean;
 
-  constructor(private parent?: InjectorApi, providers?: Array<Provider | Type>) {
+  constructor(private parent?: InjectorApi, providers?: Providers) {
     if (!parent) {
-      this.parent = new NullInjector();
       this.root = true;
     }
 
@@ -45,7 +46,17 @@ export class Injector implements InjectorApi {
   }
 
   has(token: InjectionToken, checkParents = true): boolean {
-    return this.providerMap.has(token) || (checkParents && this.parent.has(token));
+    if (this.providerMap.has(token)) {
+      return true;
+    }
+
+    if (checkParents && this.parent?.has(token, checkParents)) {
+      return true;
+    }
+
+    const isLazy = Boolean(checkParents && this.root && typeof token === 'function' && Reflect.getMetadata(INJECTABLE_META, token));
+
+    return isLazy;
   }
 
   get<T>(token: InjectionToken<T>): T {
@@ -53,25 +64,23 @@ export class Injector implements InjectorApi {
       return this.instantiateWithCache(token);
     }
 
+    if (!this.root) {
+      return this.parent.get(token);
+    }
+
     // lazy registration of types on root injector
-    if (this.root && typeof token === 'function') {
-      const providerOptions = Reflect.getMetadata(INJECTABLE_META, token) || {};
-      if (!providerOptions.providedBy || providerOptions.providedBy === 'root') {
+    if (typeof token === 'function') {
+      const injectableMetadata = Reflect.getMetadata(INJECTABLE_META, token);
+
+      if (injectableMetadata) {
         token.prototype[InjectorSymbol] = this;
         this.register({ type: token, useClass: token });
+
         return this.instantiateWithCache(token);
-      }
-
-      if (providerOptions.providedBy && providerOptions.providedBy instanceof Injector) {
-        const injector = providerOptions.providedBy;
-        token.prototype[InjectorSymbol] = injector;
-        injector.register({ type: token, useClass: token });
-
-        return injector.instantiateWithCache(token);
       }
     }
 
-    return this.parent.get(token);
+    throwIfNotFound(token);
   }
 
   create<T>(token: InjectionToken<T>, ...args: any[]): T {
@@ -84,7 +93,7 @@ export class Injector implements InjectorApi {
         break;
 
       case provider.useFactory !== undefined:
-        const deps = provider.deps ? provider.deps.map(token => this.get(token)) : [];
+        const deps = provider.deps && provider.deps.map(token => this.get(token));
         value = provider.useFactory.apply(null, deps);
         break;
 
@@ -100,7 +109,7 @@ export class Injector implements InjectorApi {
     return value;
   }
 
-  register(provider: Provider[] | Provider | Type) {
+  register(provider: Array<Provider | Type> | Provider | Type) {
     if (Array.isArray(provider)) {
       return provider.forEach(provider => this.register(provider));
     }
@@ -125,27 +134,12 @@ export class Injector implements InjectorApi {
   }
 }
 
-class NullInjector implements InjectorApi {
-  root = true;
-
-  get<T = void>(token: InjectionToken<T>): T {
-    return this.create(token);
-  }
-
-  create<T = void>(token: InjectionToken<T>): T {
-    throwIfNotFound(token);
-    return;
-  }
-
-  has() {
-    return false;
-  }
-
-  register() {}
-};
-
 function throwIfNotFound(token: any) {
-  throw new Error(String(token.name || token) + ' not found');
+  throw new TypeError(String(token.name || token) + ' not found');
+}
+
+function throwIfTypeMetadataNotFound() {
+  throw new TypeError('Type metadata not found. Did you forget to add @Injectable() to your class?');
 }
 
 export function Inject<T>(type?: InjectionToken<T>) {
@@ -156,8 +150,8 @@ export function Inject<T>(type?: InjectionToken<T>) {
           type = Reflect.getMetadata('design:type', target, property);
         }
 
-        if (!type) {
-          throw new Error('Type metadata not found. Did you forget to add @Injectable() to your class?');
+        if ((type as any) === Object) {
+          throwIfTypeMetadataNotFound();
         }
 
         const value = getInjectorFrom(this).get(type);
@@ -169,12 +163,12 @@ export function Inject<T>(type?: InjectionToken<T>) {
   };
 }
 
-export function Injectable(options?: InjectableOptions) {
+export function Injectable() {
   return (target: any) => {
-    Reflect.defineMetadata(INJECTABLE_META, options, target);
+    Reflect.defineMetadata(INJECTABLE_META, true, target);
   };
 }
 
-export function getInjectorFrom(target: Type | HTMLElement): Injector {
+export function getInjectorFrom(target: any): Injector {
   return target[InjectorSymbol];
 }

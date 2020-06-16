@@ -10,7 +10,7 @@ export interface AttributeMatcher {
   (attribute: string, element: HTMLElement): boolean;
 }
 
-@Injectable({ providedBy: 'root' })
+@Injectable()
 export class SyntaxRules {
   private rules: Array<{ matcher: AttributeMatcher, handler: SyntaxRule }> = [];
 

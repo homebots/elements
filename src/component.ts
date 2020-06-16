@@ -2,7 +2,7 @@ import { Subscription } from 'rxjs';
 import { BOOTSTRAP } from './bootstrap';
 import { ChangeDetectorRef, Changes, ReactiveChangeDetector } from './change-detection';
 import { ExecutionContext } from './execution-context';
-import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider } from './injector';
+import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider, Providers } from './injector';
 import { createTemplateFromHtml, noop } from './utils';
 import { DomHelpers } from './dom-helpers';
 
@@ -22,7 +22,7 @@ export interface ComponentOptions {
   shadowDom?: boolean | ShadowRootInit;
   extensionOptions?: { extends: string; };
   hostAttributes?: HostAttributes;
-  providers?: Provider[];
+  providers?: Providers;
 }
 
 export type LifecycleHook = () => void;

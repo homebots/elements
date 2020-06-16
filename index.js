@@ -4109,17 +4109,14 @@ class Injector {
         }
         // lazy registration of types on root injector
         if (this.root && typeof token === 'function') {
-            const providerOptions = Reflect.getMetadata(INJECTABLE_META, token) || {};
+            const providerOptions = Reflect.getMetadata(INJECTABLE_META, token);
+            if (!providerOptions) {
+                throwIfNotFound(token);
+            }
             if (!providerOptions.providedBy || providerOptions.providedBy === 'root') {
                 token.prototype[exports.InjectorSymbol] = this;
                 this.register({ type: token, useClass: token });
                 return this.instantiateWithCache(token);
-            }
-            if (providerOptions.providedBy && providerOptions.providedBy instanceof Injector) {
-                const injector = providerOptions.providedBy;
-                token.prototype[exports.InjectorSymbol] = injector;
-                injector.register({ type: token, useClass: token });
-                return injector.instantiateWithCache(token);
             }
         }
         return this.parent.get(token);
@@ -4181,7 +4178,10 @@ class NullInjector {
     register() { }
 }
 function throwIfNotFound(token) {
-    throw new Error(String(token.name || token) + ' not found');
+    throw new TypeError(String(token.name || token) + ' not found');
+}
+function throwIfTypeMetadataNotFound() {
+    throw new TypeError('Type metadata not found. Did you forget to add @Injectable() to your class?');
 }
 function Inject(type) {
     return (target, property) => {
@@ -4191,7 +4191,7 @@ function Inject(type) {
                     type = Reflect.getMetadata('design:type', target, property);
                 }
                 if (!type) {
-                    throw new Error('Type metadata not found. Did you forget to add @Injectable() to your class?');
+                    throwIfTypeMetadataNotFound();
                 }
                 const value = getInjectorFrom(this).get(type);
                 Object.defineProperty(this, property, { value });
@@ -4203,7 +4203,7 @@ function Inject(type) {
 exports.Inject = Inject;
 function Injectable(options) {
     return (target) => {
-        Reflect.defineMetadata(INJECTABLE_META, options, target);
+        Reflect.defineMetadata(INJECTABLE_META, options || {}, target);
     };
 }
 exports.Injectable = Injectable;
@@ -4374,7 +4374,7 @@ let DomHelpers = /** @class */ (() => {
             const eventHandler = ($event) => executionContext.run(expression, { $event });
             const [eventName, suffix] = eventNameAndSuffix.split('.');
             const useCapture = eventName === 'focus' || eventName === 'blur';
-            const callback = (event) => changeDetector.run(() => {
+            const callback = (event) => {
                 if (suffix === 'once') {
                     element.removeEventListener(eventName, callback, { capture: useCapture });
                 }
@@ -4384,7 +4384,7 @@ let DomHelpers = /** @class */ (() => {
                 }
                 eventHandler.apply(element, [event]);
                 changeDetector.markAsDirtyAndCheck();
-            });
+            };
             element.addEventListener(eventName, callback, { capture: useCapture });
         }
         readReferences(_, executionContext, element, attribute, __) {

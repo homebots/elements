@@ -1,6 +1,6 @@
 import { Application } from './application';
 import { ChangeDetectorRef, ZoneChangeDetector } from './change-detection';
-import { Provider } from './injector';
+import { Provider, Providers } from './injector';
 import { AnyFunction } from './utils';
 
 class Bootstrap {
@@ -24,7 +24,7 @@ export const BOOTSTRAP = new Bootstrap();
 
 export interface BootstrapOptions {
   rootNode?: HTMLElement;
-  providers: Provider[];
+  providers: Providers;
 }
 
 const defaultOptions = {
@@ -40,7 +40,7 @@ export function bootstrap(options?: BootstrapOptions) {
   const { rootNode, providers } = options;
 
   // let's make sure a change detector is provided
-  if (!providers.find(p => p.type === ChangeDetectorRef)) {
+  if (!providers.find(p => typeof p !== 'function' && p.type === ChangeDetectorRef)) {
     providers.push(defaultOptions.providers[0]);
   }
 
