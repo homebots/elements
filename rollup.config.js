@@ -5,8 +5,8 @@ import resolve from '@rollup/plugin-node-resolve';
 export default {
   input: 'src/index.ts',
   external: [
-    'zone.js/dist/zone.js',
-    'reflect-metadata',
+    // 'zone.js/dist/zone.js',
+    // 'reflect-metadata',
   ],
   output: {
     dir: '.',

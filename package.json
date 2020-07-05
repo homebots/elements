@@ -24,14 +24,14 @@
     "karma-jasmine": "^3.3.1",
     "karma-typescript": "^5.0.3",
     "rollup": "^2.10.9",
-    "typescript": "^3.9.3"
+    "typescript": "^3.9.3",
+    "reflect-metadata": "^0.1.13",
+    "zone.js": "^0.10.3",
+    "lodash.clone": "^4.5.0",
+    "lodash.isequal": "^4.5.0"
   },
   "dependencies": {
-    "lodash.clone": "^4.5.0",
-    "lodash.isequal": "^4.5.0",
-    "reflect-metadata": "^0.1.13",
-    "rxjs": "^6.5.5",
-    "zone.js": "^0.10.3"
+    "rxjs": "^6.5.5"
   },
   "publishConfig": {
     "access": "public"
