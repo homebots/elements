@@ -9,6 +9,8 @@ What you get out-of-box:
 - Lifecycle hooks (onChange, OnInit, OnDestroy, OnBeforeCheck)
 - Change detection (via [Zone.js](https://www.npmjs.com/package/zone.js))
 
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/homebots/elements)
+
 # Syntax Examples
 
 Most of the syntax is shamelessly copied from Angular and Alpine.js:

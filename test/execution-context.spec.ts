@@ -77,5 +77,5 @@ describe('SealedExecutionContext', () => {
     sealedContext.reset();
     sealedContext.addLocals({ local: true });
     expect(() => sealedContext.run('local')).toThrow(new ReferenceError('local is not defined'));
-  }
+  });
 });

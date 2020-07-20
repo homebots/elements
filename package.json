@@ -6,7 +6,7 @@
   "typings": "./dist/index.d.ts",
   "scripts": {
     "build": "rm -rf ./dist && tsc -p tsconfig.json -d --outDir dist && rollup --config",
-    "test": "echo true",
+    "test": "./node_modules/.bin/karma start",
     "watch": "nodemon -e ts,json,js -w src -x npm run build"
   },
   "keywords": [],

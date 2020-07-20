@@ -17,7 +17,7 @@ module.exports = function(config) {
 
     reporters: ['progress', 'karma-typescript'],
     autoWatch: true,
-    browsers: ['ChromeHeadless'], // , 'Firefox'
+    browsers: [], // , 'Firefox'
     singleRun: false,
     concurrency: Infinity,
 
