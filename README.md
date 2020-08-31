@@ -11,7 +11,62 @@ What you get out-of-box:
 
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/homebots/elements)
 
-# Syntax Examples
+## How to Use
+
+First create some components:
+
+```typescript
+// src/app/app.component.ts
+import { Component } from "@homebots/elements";
+
+@Component({
+  tag: "my-app",
+  template: "<h1>Hello!</h1>",
+})
+export class AppComponent extends HTMLElement {}
+```
+
+Then bootstrap the application:
+
+```typescript
+//  src/index.ts
+import { bootstrap } from "@homebots/elements";
+export { AppComponent } from "./app/app.component.ts";
+
+bootstrap();
+```
+
+Then finally put all together:
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My App</title>
+    <script src="https://unpkg.com/zone.js"></script>
+    <script src="https://unpkg.com/reflect-metadata"></script>
+    <script src="./index.ts"></script>
+  </head>
+
+  <body>
+    <my-app></my-app>
+  </body>
+</html>
+```
+
+## Build
+
+I tried [Parcel](https://parceljs.org) to bundle the example and it's dead easy to start an app. Really cool stuff!
+So I recommend it for a quick start:
+
+```bash
+$ npm install -g parcel-bundler
+$ parcel src/index.html
+```
+
+## Syntax Examples
 
 Most of the syntax is shamelessly copied from Angular and Alpine.js:
 
@@ -22,11 +77,11 @@ Most of the syntax is shamelessly copied from Angular and Alpine.js:
 <!-- bind a property -->
 <div [innerText]="this.text"></div>
 
-<!-- bind to events -->
+<!-- listening to events -->
 <div (click)="this.onClick()"></div>
 
-<!-- references -->
-<input #name/>
+<!-- using references -->
+<input #name />
 <button (click)="name.focus()">click me</button>
 
 <!-- conditional nodes -->
@@ -43,7 +98,6 @@ Most of the syntax is shamelessly copied from Angular and Alpine.js:
 
 <!-- conditional classes -->
 <p [class.highlight]="this.isTextHighlighted">Lorem ipsum</p>
-
 ```
 
 ```typescript
@@ -55,19 +109,23 @@ export class UserService {}
 export class AppService {
   // injected service
   @Inject() userService: UserService;
-  
+
   // injected with symbol
   @Inject(ApplicationRef) userService: Application;
 }
-
 ```
 
-# Usage
+## Dependencies
 
-You need to import [Zone.js](https://www.npmjs.com/package/zone.js) and [Reflect API](https://www.npmjs.com/package/reflect-metadata) in your project.
-Unpkg makes life so easy, amirite?
+You will need to import [Zone.js](https://www.npmjs.com/package/zone.js) and [Reflect API](https://www.npmjs.com/package/reflect-metadata) in your project.
 
-I also tried [Parcel](https://parceljs.org) to bundle the example and it's dead easy to start an app. Really cool stuff!
+Unpkg makes life so easy these days, amirite?
+Just add these:
+
+```html
+<script src="https://unpkg.com/zone.js"></script>
+<script src="https://unpkg.com/reflect-metadata"></script>
+```
 
 Here's a To-do list using Elements https://github.com/homebots/elements-example/tree/todo-app
 
@@ -77,8 +135,8 @@ Lots of things can be improved here.
 To name a few:
 
 ```
-- Implement performance of conditionals and loops
-- Add some error handling to ease debugging
+- Improve performance of conditionals and loops
+- Add some error handling for easy debugging
 - Add tests
 ```
 
@@ -87,6 +145,6 @@ I put this together in a few days as a braindump so there's no test coverage yet
 I think this is not the most performant thing on Earth too, but I'm not trying to beat React or Angular.
 
 The goal of this project is to provide a no-brainer jump start solution to create small apps and experiments.
-The code will run on Chrome, Firefox or any recent/decent browser. 
+The code will run on Chrome, Firefox or any recent/decent browser.
 
 I don't expect to ever fully support IE, but some polyfills could make it work.
