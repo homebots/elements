@@ -2,5 +2,9 @@ example
 .github
 src
 rollup.config.js
-tsconfig.json
+tsconfig*
+.gitpod*
 .cache
+test/*
+.prettierrc
+karma*
