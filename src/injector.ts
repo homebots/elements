@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+/// <reference types="reflect-metadata" />
 
 export type Type<T = object> = new (...args: any[]) => T;
 export type InjectionToken<T = any> = symbol | Type<T>;
@@ -16,7 +16,7 @@ export const InjectableMetadataKey = 'injectable';
 export const InjectorSymbol = Symbol('injector');
 
 export interface InjectableOptions {
-  providedBy?: 'root' | InjectorApi
+  providedBy?: 'root' | InjectorApi;
 }
 
 const INJECTABLE_META = 'injectable';
@@ -29,8 +29,8 @@ export interface InjectorApi {
 }
 
 export class Injector implements InjectorApi {
-  protected providerMap?= new Map<InjectionToken, Provider>();
-  protected cache?= new Map<InjectionToken, unknown>();
+  protected providerMap? = new Map<InjectionToken, Provider>();
+  protected cache? = new Map<InjectionToken, unknown>();
   readonly root: boolean;
 
   constructor(private parent?: InjectorApi, providers?: Providers) {
@@ -39,7 +39,7 @@ export class Injector implements InjectorApi {
     }
 
     if (providers) {
-      providers.forEach(provider => this.register(provider));
+      providers.forEach((provider) => this.register(provider));
     }
 
     this.register({ type: Injector, useValue: this });
@@ -54,7 +54,9 @@ export class Injector implements InjectorApi {
       return true;
     }
 
-    const isLazy = Boolean(checkParents && this.root && typeof token === 'function' && Reflect.getMetadata(INJECTABLE_META, token));
+    const isLazy = Boolean(
+      checkParents && this.root && typeof token === 'function' && Reflect.getMetadata(INJECTABLE_META, token),
+    );
 
     return isLazy;
   }
@@ -89,11 +91,11 @@ export class Injector implements InjectorApi {
 
     switch (true) {
       case provider.useValue !== undefined:
-        value = provider.useValue
+        value = provider.useValue;
         break;
 
       case provider.useFactory !== undefined:
-        const deps = provider.deps && provider.deps.map(token => this.get(token));
+        const deps = provider.deps && provider.deps.map((token) => this.get(token));
         value = provider.useFactory.apply(null, deps);
         break;
 
@@ -111,7 +113,7 @@ export class Injector implements InjectorApi {
 
   register(provider: Array<Provider | Type> | Provider | Type) {
     if (Array.isArray(provider)) {
-      return provider.forEach(provider => this.register(provider));
+      return provider.forEach((provider) => this.register(provider));
     }
 
     if (typeof provider === 'function') {

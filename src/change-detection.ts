@@ -1,6 +1,7 @@
+/// <reference types="zone.js/dist/zone.js" />
+
 import * as clone from 'lodash.clone';
 import * as isEqual from 'lodash.isequal';
-import 'zone.js/dist/zone.js';
 import { CustomElement } from './component';
 import { InjectionToken } from './injector';
 import { AnyFunction, setTimeoutNative } from './utils';
@@ -24,7 +25,7 @@ export interface Watcher {
   lastValue?: any;
   useEquals?: boolean;
   metadata?: {
-    property: string,
+    property: string;
     isInput: boolean;
     firstTime: boolean;
   };
@@ -63,10 +64,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
   private _afterCheck: AnyFunction[] = [];
   private _beforeCheck: AnyFunction[] = [];
 
-  constructor(
-    protected target: CustomElement = null,
-    public parent: ReactiveChangeDetector = null,
-  ) {
+  constructor(protected target: CustomElement = null, public parent: ReactiveChangeDetector = null) {
     if (this.parent) {
       this.parent.children.set(this.target, this);
     }
@@ -90,13 +88,13 @@ export class ReactiveChangeDetector implements ChangeDetector {
     try {
       return callback.apply(applyThis, applyArgs);
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   }
 
   watch<T>(expression: Watcher | Expression<T>): void;
   watch<T>(expression: Watcher | Expression<T>, callback?: ChangeCallback<T>, useEquals = false) {
-    if (typeof expression !== 'function')  {
+    if (typeof expression !== 'function') {
       this.watchers.push(expression as Watcher);
       return;
     }
@@ -110,7 +108,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
 
   markTreeForCheck() {
     this.state = 'dirty';
-    this.children.forEach(child => child.markTreeForCheck());
+    this.children.forEach((child) => child.markTreeForCheck());
   }
 
   markAsDirtyAndCheck() {
@@ -127,10 +125,10 @@ export class ReactiveChangeDetector implements ChangeDetector {
     let inputChanges: Changes = {};
     let hasInputChanges = false;
 
-    this._beforeCheck.forEach(fn => fn(inputChanges));
+    this._beforeCheck.forEach((fn) => fn(inputChanges));
     this.state = 'checking';
 
-    this.watchers.forEach(watcher => {
+    this.watchers.forEach((watcher) => {
       const newValue = this.runWatcher(watcher.expression, this.target, []);
       const lastValue = watcher.lastValue;
 
@@ -146,7 +144,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
           value: newValue,
           lastValue,
           firstTime: watcher.metadata.firstTime,
-        }
+        };
 
         watcher.metadata.firstTime = false;
         hasInputChanges = true;
@@ -163,7 +161,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
       inputChanges = null;
     }
 
-    this._afterCheck.forEach(fn => fn(inputChanges));
+    this._afterCheck.forEach((fn) => fn(inputChanges));
 
     if (this.state !== 'checking') {
       this.scheduleTreeCheck();
@@ -183,7 +181,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
 
   checkTree() {
     this.check();
-    this.children.forEach(cd => cd.checkTree());
+    this.children.forEach((cd) => cd.checkTree());
   }
 
   scheduleTreeCheck() {
@@ -240,7 +238,15 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
     return super.run.apply(this, args);
   }
 
-  onInvoke(delegate: ZoneDelegate, _: Zone, target: Zone, callback: VoidFunction, applyThis: any, applyArgs: any[], source: string) {
+  onInvoke(
+    delegate: ZoneDelegate,
+    _: Zone,
+    target: Zone,
+    callback: VoidFunction,
+    applyThis: any,
+    applyArgs: any[],
+    source: string,
+  ) {
     const output = delegate.invoke(target, callback, applyThis, applyArgs);
     this.scheduleZoneCheck(target);
 

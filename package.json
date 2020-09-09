@@ -9,7 +9,10 @@
     "test": "./node_modules/.bin/karma start",
     "watch": "nodemon -e ts,json,js -w src -x npm run build"
   },
-  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/homebots/elements.git"
+  },
   "author": "Darlan Alves <me@darlanalv.es>",
   "license": "MIT",
   "devDependencies": {

@@ -20,7 +20,7 @@ export interface ComponentOptions {
   template?: string;
   styles?: string;
   shadowDom?: boolean | ShadowRootInit;
-  extensionOptions?: { extends: string; };
+  extensionOptions?: { extends: string };
   hostAttributes?: HostAttributes;
   providers?: Providers;
 }
@@ -48,10 +48,21 @@ export const TemplateRef: InjectionToken<HTMLTemplateElement> = Symbol('Template
 
 export function Component(options: ComponentOptions) {
   return function (ComponentClass: typeof HTMLElement) {
-    const CustomElement = createComponentClass(ComponentClass, options);
-    addLifeCycleHooks(CustomElement);
+    const CustomElement = createComponent(options, ComponentClass);
     BOOTSTRAP.whenReady(() => customElements.define(options.tag, CustomElement, options.extensionOptions));
-  }
+  };
+}
+
+export function createComponent(options: ComponentOptions, ComponentClass: typeof HTMLElement) {
+  const CustomElement = createComponentClass(ComponentClass, options);
+  addLifeCycleHooks(CustomElement);
+
+  return CustomElement;
+}
+
+export function defineComponent(options: ComponentOptions, ComponentClass: typeof HTMLElement) {
+  const CustomElement = createComponent(options, ComponentClass);
+  customElements.define(options.tag, CustomElement, options.extensionOptions);
 }
 
 export interface CustomElement extends HTMLElement {
@@ -81,14 +92,17 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
         const executionContext = new ExecutionContext(this);
         const dom = injector.get(DomHelpers);
 
-        injector.register({ type: ExecutionContext, useValue: executionContext });
+        injector.register({
+          type: ExecutionContext,
+          useValue: executionContext,
+        });
 
         addTemplate(this, options);
         addHostAttributes(this, options);
         dom.compileTree(this.shadowRoot || this, changeDetector, executionContext);
 
         changeDetector.beforeCheck(() => this.onBeforeCheck());
-        changeDetector.afterCheck(changes => changes && this.onChanges(changes));
+        changeDetector.afterCheck((changes) => changes && this.onChanges(changes));
         changeDetector.markAsDirtyAndCheck();
 
         this.onInit();
@@ -100,15 +114,15 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
     disconnectedCallback() {
       this.onDestroy();
       getInjectorFrom(this).get(ChangeDetectorRef).unregister();
-      Object.values(this).filter(k => k && typeof k === 'object' && k instanceof Subscription && k.unsubscribe());
+      Object.values(this).filter((k) => k && typeof k === 'object' && k instanceof Subscription && k.unsubscribe());
     }
-  }
-};
+  };
+}
 
 const lifeCycleHooks = ['onInit', 'onDestroy', 'onChanges', 'onBeforeCheck'];
 
 function addLifeCycleHooks(target: any) {
-  lifeCycleHooks.forEach(hook => {
+  lifeCycleHooks.forEach((hook) => {
     if (!target.prototype[hook]) {
       target.prototype[hook] = noop;
     }
@@ -118,7 +132,7 @@ function addLifeCycleHooks(target: any) {
 export function findParentComponent(component: HTMLElement): HTMLElement | null {
   let parentComponent: any = component;
 
-  while (parentComponent && (parentComponent = (parentComponent.parentNode || parentComponent.host))) {
+  while (parentComponent && (parentComponent = parentComponent.parentNode || parentComponent.host)) {
     if (parentComponent[InjectorSymbol]) {
       return parentComponent;
     }
@@ -139,7 +153,10 @@ export function createComponentInjector(component: CustomElement, options: Compo
       const changeDetector = parentChangeDetector?.fork(component);
       injector.register({ type: ChangeDetectorRef, useValue: changeDetector });
     } else {
-      injector.register({ type: ChangeDetectorRef, useClass: ReactiveChangeDetector });
+      injector.register({
+        type: ChangeDetectorRef,
+        useClass: ReactiveChangeDetector,
+      });
     }
   }
 
@@ -157,10 +174,13 @@ export function addTemplate(target: CustomElement, options: ComponentOptions) {
   }
 
   const templateRef = createTemplateFromHtml(template);
-  getInjectorFrom(target).register({ type: TemplateRef, useValue: templateRef });
+  getInjectorFrom(target).register({
+    type: TemplateRef,
+    useValue: templateRef,
+  });
 
   if (useShadowDom) {
-    const shadowDomOptions = options.shadowDom !== true && options.shadowDom || { mode: 'open' };
+    const shadowDomOptions = (options.shadowDom !== true && options.shadowDom) || { mode: 'open' };
     const shadowRoot = target.attachShadow(shadowDomOptions);
     shadowRoot.appendChild(templateRef.content.cloneNode(true));
     return;
@@ -171,7 +191,7 @@ export function addTemplate(target: CustomElement, options: ComponentOptions) {
 
   if (hasSlot) {
     const currentContent = document.createDocumentFragment();
-    target.childNodes.forEach(node => currentContent.appendChild(node));
+    target.childNodes.forEach((node) => currentContent.appendChild(node));
     target.appendChild(content);
     (target.querySelector('slot') || target).appendChild(currentContent);
     return;
@@ -185,7 +205,7 @@ export function addHostAttributes(target: CustomElement, options: ComponentOptio
 
   if (!hostAttributes) return;
 
-  Object.keys(hostAttributes).forEach(attribute => {
+  Object.keys(hostAttributes).forEach((attribute) => {
     target.setAttribute(attribute, hostAttributes[attribute]);
   });
 }
