@@ -1,10 +1,10 @@
 example
 .github
-src
+src/
+test/
 rollup.config.js
 tsconfig*
 .gitpod*
 .cache
-test/*
 .prettierrc
 karma*
