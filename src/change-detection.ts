@@ -122,46 +122,17 @@ export class ReactiveChangeDetector implements ChangeDetector {
   check() {
     if (this.state === 'checked') return;
 
-    let inputChanges: Changes = {};
-    let hasInputChanges = false;
+    const inputChanges: Changes = {};
 
     this._beforeCheck.forEach((fn) => fn(inputChanges));
     this.state = 'checking';
 
-    this.watchers.forEach((watcher) => {
-      const newValue = this.runWatcher(watcher.expression, this.target, []);
-      const lastValue = watcher.lastValue;
+    const hasInputChanges = this.watchers.reduce(
+      (value, watcher) => value || this.checkWatcher(inputChanges, watcher),
+      false,
+    );
 
-      const useEquals = watcher.useEquals;
-      const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !isEqual(newValue, lastValue));
-
-      if (!hasChanges) {
-        return;
-      }
-
-      if (watcher.metadata?.isInput) {
-        inputChanges[watcher.metadata.property] = {
-          value: newValue,
-          lastValue,
-          firstTime: watcher.metadata.firstTime,
-        };
-
-        watcher.metadata.firstTime = false;
-        hasInputChanges = true;
-      }
-
-      watcher.lastValue = useEquals ? clone(newValue) : newValue;
-
-      if (watcher.callback) {
-        this.runWatcherCallback(watcher.callback, null, [newValue, lastValue]);
-      }
-    });
-
-    if (!hasInputChanges) {
-      inputChanges = null;
-    }
-
-    this._afterCheck.forEach((fn) => fn(inputChanges));
+    this._afterCheck.forEach(hasInputChanges ? (fn) => fn(inputChanges) : (fn) => fn(null));
 
     if (this.state !== 'checking') {
       this.scheduleTreeCheck();
@@ -169,6 +140,36 @@ export class ReactiveChangeDetector implements ChangeDetector {
     }
 
     this.state = 'checked';
+  }
+
+  protected checkWatcher(changes: Changes, watcher: Watcher) {
+    const newValue = this.runWatcher(watcher.expression, this.target, []);
+    const lastValue = watcher.lastValue;
+
+    const useEquals = watcher.useEquals;
+    const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !isEqual(newValue, lastValue));
+
+    if (!hasChanges) {
+      return false;
+    }
+
+    if (watcher.metadata?.isInput) {
+      changes[watcher.metadata.property] = {
+        value: newValue,
+        lastValue,
+        firstTime: watcher.metadata.firstTime,
+      };
+
+      watcher.metadata.firstTime = false;
+    }
+
+    watcher.lastValue = useEquals ? clone(newValue) : newValue;
+
+    if (watcher.callback) {
+      this.runWatcherCallback(watcher.callback, null, [newValue, lastValue]);
+    }
+
+    return watcher.metadata?.isInput;
   }
 
   protected runWatcher(...args: any[]) {

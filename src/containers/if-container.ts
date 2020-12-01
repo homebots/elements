@@ -21,7 +21,7 @@ export class IfContainer {
   ) {}
 
   private nodes: Node[] = [];
-  private state = 0 | 1 | 2;
+  private state: 0 | 1 | 2;
 
   onChanges() {
     switch (true) {
@@ -45,10 +45,10 @@ export class IfContainer {
   private createNodes(template: HTMLTemplateElement) {
     const templateNodes = Array.from(template.content.childNodes);
     const fragment = document.createDocumentFragment();
-    const nodes = templateNodes.map(n => n.cloneNode(true));
+    const nodes = templateNodes.map((n) => n.cloneNode(true));
 
     fragment.append(...nodes);
-    nodes.forEach(node => this.dom.compileTree(node as HTMLElement, this.changeDetector, this.executionContext));
+    nodes.forEach((node) => this.dom.compileTree(node as HTMLElement, this.changeDetector, this.executionContext));
 
     this.changeDetector.markAsDirtyAndCheck();
 
@@ -60,7 +60,7 @@ export class IfContainer {
   }
 
   private removeOldNodes() {
-    this.nodes.forEach(node => node.parentNode.removeChild(node));
+    this.nodes.forEach((node) => node.parentNode.removeChild(node));
     this.nodes = [];
   }
 }

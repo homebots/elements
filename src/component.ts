@@ -99,7 +99,9 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
 
         addTemplate(this, options);
         addHostAttributes(this, options);
-        dom.compileTree(this.shadowRoot || this, changeDetector, executionContext);
+        Array.from(this.shadowRoot?.children || this.children).forEach((node) =>
+          dom.compileTree(node as HTMLElement, changeDetector, executionContext),
+        );
 
         changeDetector.beforeCheck(() => this.onBeforeCheck());
         changeDetector.afterCheck((changes) => changes && this.onChanges(changes));
