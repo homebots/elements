@@ -34,6 +34,7 @@ export {
   OnInit,
   ShadowRootInit,
   TemplateRef,
+  ShadowDomToggle,
 } from './component';
 
 export { ContainerRegistry } from './containers/registry';

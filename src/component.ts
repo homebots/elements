@@ -2,7 +2,7 @@ import { Subscription } from 'rxjs';
 import { BOOTSTRAP } from './bootstrap';
 import { ChangeDetectorRef, Changes, ReactiveChangeDetector } from './change-detection';
 import { ExecutionContext } from './execution-context';
-import { getInjectorFrom, InjectionToken, Injector, InjectorSymbol, Provider, Providers } from './injector';
+import { getInjectorFrom, Injectable, InjectionToken, Injector, InjectorSymbol, Provider, Providers } from './injector';
 import { createTemplateFromHtml, noop } from './utils';
 import { DomHelpers } from './dom-helpers';
 
@@ -45,6 +45,19 @@ export interface OnBeforeCheck {
 }
 
 export const TemplateRef: InjectionToken<HTMLTemplateElement> = Symbol('TemplateRef');
+
+@Injectable()
+export class ShadowDomToggle {
+  enabled: boolean = true;
+
+  enable() {
+    this.enabled = true;
+  }
+
+  disable() {
+    this.enabled = false;
+  }
+}
 
 export function Component(options: ComponentOptions) {
   return function (ComponentClass: typeof HTMLElement) {
@@ -91,6 +104,10 @@ export function createComponentClass(ComponentClass: typeof HTMLElement, options
         const changeDetector = injector.get(ChangeDetectorRef);
         const executionContext = new ExecutionContext(this);
         const dom = injector.get(DomHelpers);
+
+        if (options.shadowDom === undefined) {
+          options.shadowDom = injector.get(ShadowDomToggle).enabled;
+        }
 
         injector.register({
           type: ExecutionContext,
