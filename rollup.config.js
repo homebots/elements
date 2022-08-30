@@ -4,17 +4,10 @@ import resolve from '@rollup/plugin-node-resolve';
 
 export default {
   input: 'src/index.ts',
-  external: [
-    // 'zone.js/dist/zone.js',
-    // 'reflect-metadata',
-  ],
+  external: [],
   output: {
     dir: '.',
-    format: 'es'
+    format: 'es',
   },
-  plugins: [
-    typescript({ module: 'CommonJS' }),
-    resolve(),
-    commonjs({ extensions: ['.js', '.ts'] }),
-  ]
+  plugins: [typescript({ module: 'CommonJS' }), resolve(), commonjs({ extensions: ['.js', '.ts'] })],
 };

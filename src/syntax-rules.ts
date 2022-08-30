@@ -3,7 +3,13 @@ import { ExecutionContext } from './execution-context';
 import { Injectable } from './injector';
 
 interface SyntaxRule {
-  (changeDetector: ChangeDetector, executionContext: ExecutionContext, element: HTMLElement, attribute: string, attributeValue: string): void;
+  (
+    changeDetector: ChangeDetector,
+    executionContext: ExecutionContext,
+    element: HTMLElement,
+    attribute: string,
+    attributeValue: string,
+  ): void;
 }
 
 export interface AttributeMatcher {
@@ -12,7 +18,7 @@ export interface AttributeMatcher {
 
 @Injectable()
 export class SyntaxRules {
-  private rules: Array<{ matcher: AttributeMatcher, handler: SyntaxRule }> = [];
+  private rules: Array<{ matcher: AttributeMatcher; handler: SyntaxRule }> = [];
 
   addRule(matcher: AttributeMatcher, handler: SyntaxRule) {
     this.rules.push({ matcher, handler });
@@ -31,7 +37,7 @@ export class SyntaxRules {
   }
 }
 
-const cleanAttributeRe = /^[^a-z]|[^a-z]$/g
+const cleanAttributeRe = /^[^a-z]|[^a-z]$/g;
 
 export function cleanAttributeName(attribute: string) {
   return attribute.replace(cleanAttributeRe, '');

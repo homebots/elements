@@ -26,7 +26,7 @@ describe('ExecutionContext', () => {
 
     parentContext.addLocals({
       number: 123,
-      string: 'alice'
+      string: 'alice',
     });
 
     const newContext = parentContext.fork();
@@ -44,7 +44,7 @@ describe('ExecutionContext', () => {
 
     parentContext.addLocals({
       number: 123,
-      string: 'alice'
+      string: 'alice',
     });
 
     const newContext = parentContext.fork();

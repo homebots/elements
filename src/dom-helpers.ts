@@ -38,12 +38,12 @@ export class DomHelpers {
     executionContext: ExecutionContext,
     element: HTMLElementWitContainer<HTMLElement>,
     property: string,
-    expression: string
+    expression: string,
   ) {
     const isTemplate = element.nodeName === TEMPLATE_NODE;
     const transformedProperty = this.findElementProperty(element, property);
     const inputProperties = getInputMetadata(isTemplate ? element.container.target : element);
-    const isInput = inputProperties.filter(i => i.property === transformedProperty).length > 0;
+    const isInput = inputProperties.filter((i) => i.property === transformedProperty).length > 0;
     const valueGetter = () => executionContext.run(expression);
 
     changeDetector.watch({
@@ -85,9 +85,8 @@ export class DomHelpers {
     const valueGetter = () => executionContext.run(expression);
     const className = property.slice(6);
 
-    changeDetector.watch(valueGetter, (value: boolean) => value ?
-      element.classList.add(className) :
-      element.classList.remove(className)
+    changeDetector.watch(valueGetter, (value: boolean) =>
+      value ? element.classList.add(className) : element.classList.remove(className),
     );
   }
 
@@ -96,7 +95,7 @@ export class DomHelpers {
     executionContext: ExecutionContext,
     element: HTMLElement,
     eventNameAndSuffix: string,
-    expression: string
+    expression: string,
   ) {
     const eventHandler = ($event: Event) => executionContext.run(expression, { $event });
     const [eventName, suffix] = eventNameAndSuffix.split('.');
@@ -117,7 +116,6 @@ export class DomHelpers {
 
     element.addEventListener(eventName, callback, { capture: useCapture });
   }
-
 
   readReferences(
     _: ChangeDetector,
@@ -160,9 +158,19 @@ export class DomHelpers {
     return attributeName;
   }
 
-  createContainerByName(containerName: string, template: HTMLTemplateElement, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
+  createContainerByName(
+    containerName: string,
+    template: HTMLTemplateElement,
+    changeDetector: ChangeDetector,
+    executionContext: ExecutionContext,
+  ) {
     if (this.containerRegistry.has(containerName)) {
-      return this.injector.create(this.containerRegistry.get(containerName), template, changeDetector, executionContext) as OnChanges;
+      return this.injector.create(
+        this.containerRegistry.get(containerName),
+        template,
+        changeDetector,
+        executionContext,
+      ) as OnChanges;
     }
   }
 
@@ -170,12 +178,14 @@ export class DomHelpers {
     if (element.nodeType !== element.ELEMENT_NODE) return;
 
     if (element.nodeName === TEMPLATE_NODE) {
-      const container = (element as any).container = new TemplateContainer();
+      const container = ((element as any).container = new TemplateContainer());
       changeDetector = changeDetector.fork(container);
-      changeDetector.afterCheck(changes => changes && container.onChanges(changes));
+      changeDetector.afterCheck((changes) => changes && container.onChanges(changes));
     }
 
-    element.getAttributeNames().forEach(attribute => this.syntaxRules.match(changeDetector, executionContext, element, attribute));
+    element
+      .getAttributeNames()
+      .forEach((attribute) => this.syntaxRules.match(changeDetector, executionContext, element, attribute));
   }
 
   compileTree(
@@ -186,10 +196,13 @@ export class DomHelpers {
     const nodeType = elementOrShadowRoot.nodeType;
 
     if (elementOrShadowRoot.children?.length) {
-      Array.from(elementOrShadowRoot.children).forEach((e: HTMLElement) => this.compileTree(e, changeDetector, executionContext));
+      Array.from(elementOrShadowRoot.children).forEach((e: HTMLElement) =>
+        this.compileTree(e, changeDetector, executionContext),
+      );
     }
 
-    const isNotElementOrDocument = nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE;
+    const isNotElementOrDocument =
+      nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE;
     const isShadowRoot = (elementOrShadowRoot as HTMLElement).getAttributeNames === undefined;
     const isInsideTemplate = elementOrShadowRoot.parentNode?.nodeName === TEMPLATE_NODE;
 
@@ -206,10 +219,10 @@ export function Child(selector: string, isStatic?: boolean) {
     Object.defineProperty(target, property, {
       get() {
         if (isStatic && node) return node;
-        return node = (this.shadowRoot || this).querySelector(selector);
-      }
-    })
-  }
+        return (node = (this.shadowRoot || this).querySelector(selector));
+      },
+    });
+  };
 }
 
 export function Children(selector: string) {
@@ -217,7 +230,7 @@ export function Children(selector: string) {
     Object.defineProperty(target, property, {
       get() {
         return (this.shadowRoot || this).querySelectorAll(selector);
-      }
-    })
-  }
+      },
+    });
+  };
 }

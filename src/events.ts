@@ -8,10 +8,7 @@ export interface EventEmitter<T = any> {
 }
 
 export class DomEventEmitter<T> implements EventEmitter<T> {
-  constructor(
-    private element: HTMLElement,
-    private event: string,
-  ) { }
+  constructor(private element: HTMLElement, private event: string) {}
 
   emit(data: T) {
     dispatchEvent(this.element, this.event, data);
@@ -29,7 +26,7 @@ export function Output(eventName: string) {
         }
 
         return emitter;
-      }
+      },
     });
   };
 }
@@ -42,4 +39,3 @@ export function dispatchEvent(element: HTMLElement, event: string, detail: any =
 
   return element.dispatchEvent(customEvent);
 }
-

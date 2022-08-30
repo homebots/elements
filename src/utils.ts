@@ -12,4 +12,5 @@ export const noop = () => {};
 export type Fn = Function;
 
 // istanbul ignore next
-export const setTimeoutNative: Window['setTimeout'] = (...args) => ((window as any).__zone_symbol__setTimeout || window.setTimeout)(...args);
+export const setTimeoutNative: Window['setTimeout'] = (...args) =>
+  ((window as any).__zone_symbol__setTimeout || window.setTimeout)(...args);

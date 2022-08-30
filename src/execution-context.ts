@@ -9,10 +9,7 @@ const expressionCache = new Map<string, Fn>();
 export class ExecutionContext {
   locals: ExecutionLocals;
 
-  constructor(
-    private thisValue: object,
-    private parent?: ExecutionContext,
-  ) {}
+  constructor(private thisValue: object | null, private parent?: ExecutionContext) {}
 
   addLocals(locals: ExecutionLocals) {
     Object.assign(this.locals || (this.locals = {}), locals);
@@ -40,7 +37,7 @@ export class ExecutionContext {
       expressionCache.set(cacheKey, Function(...localsByName, `return ${expression}`));
     }
 
-    const localsAsArray = localsByName.map(key => locals[key]);
+    const localsAsArray = localsByName.map((key) => locals[key]);
     return expressionCache.get(cacheKey).bind(this.thisValue, ...localsAsArray);
   }
 

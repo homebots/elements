@@ -24,4 +24,3 @@ export function Input(options?: InputOptions) {
     Reflect.defineMetadata(INPUTS_METADATA, inputs, target);
   };
 }
-
