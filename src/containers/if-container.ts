@@ -46,9 +46,10 @@ export class IfContainer {
     const templateNodes = Array.from(template.content.childNodes);
     const fragment = document.createDocumentFragment();
     const nodes = templateNodes.map((n) => n.cloneNode(true));
-
+    const changeDetector = this.changeDetector.parent;
+    
     fragment.append(...nodes);
-    nodes.forEach((node) => this.dom.compileTree(node as HTMLElement, this.changeDetector, this.executionContext));
+    nodes.forEach((node) => this.dom.compileTree(node as HTMLElement, changeDetector, this.executionContext));
 
     this.changeDetector.markAsDirtyAndCheck();
 
