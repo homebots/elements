@@ -44,10 +44,10 @@ export class DomHelpers {
     const transformedProperty = this.findElementProperty(element, property);
     const inputProperties = getInputMetadata(isTemplate ? element.container.target : element);
     const isInput = inputProperties.filter((i) => i.property === transformedProperty).length > 0;
-    const valueGetter = () => executionContext.run(expression);
+    const watchExpression = () => executionContext.run(expression);
 
     changeDetector.watch({
-      expression: valueGetter,
+      expression: watchExpression,
       callback: (value: any) => {
         if (isTemplate) {
           element.container.setProperty(transformedProperty, value);
@@ -68,9 +68,9 @@ export class DomHelpers {
     property: string,
     expression: string,
   ) {
-    const valueGetter = () => executionContext.run(expression);
+    const watchExpression = () => executionContext.run(expression);
     changeDetector.watch({
-      expression: valueGetter,
+      expression: watchExpression,
       callback: (value: any) => element.setAttribute(property, value),
     });
   }
