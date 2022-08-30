@@ -6,6 +6,7 @@ import { DomHelpers } from '../dom-helpers';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
+  changeDetector: ChangeDetector;
   nodes: Node[];
   detached: boolean;
 }
@@ -20,8 +21,8 @@ export class ForContainer {
   constructor(
     private template: HTMLTemplateElement,
     private changeDetector: ChangeDetector,
-    private executionContext: ExecutionContext,
-  ) { }
+    private executionContext: ExecutionContext
+  ) {}
 
   _templateNodes: Node[];
 
@@ -43,10 +44,17 @@ export class ForContainer {
       this.resetExecutionContext();
     }
 
-    const items = Array.from(this.of);
+    const items = this.getArrayOfItems();
     const fragment = document.createDocumentFragment();
 
     this.adjustChildrenLength(items.length);
+    this.prepareLocalsAndChildren(items, fragment);
+    this.changeDetector.markAsDirtyAndCheck();
+
+    requestAnimationFrame(() => this.template.parentNode.appendChild(fragment));
+  }
+
+  private prepareLocalsAndChildren(items: any[], fragment) {
     items.forEach((item, index) => {
       const child = this.children[index];
       const locals: any = {};
@@ -61,53 +69,79 @@ export class ForContainer {
         child.detached = false;
       }
     });
+  }
 
-    this.changeDetector.markAsDirtyAndCheck();
+  private getArrayOfItems() {
+    const items = this.of;
 
-    requestAnimationFrame(() => this.template.parentNode.appendChild(fragment));
+    if (Array.isArray(items)) {
+      return items;
+    }
+
+    if (typeof items === number) {
+      return new Array(10).fill().map((_, k) => k + 1);
+    }
+
+    return [];
   }
 
   private resetExecutionContext() {
-    this.children.forEach(node => node.executionContext.reset());
+    this.children.forEach((node) => node.executionContext.reset());
   }
 
   private compileChild(child: ContainerChild) {
-    child.nodes.forEach(node => this.dom.compileTree(node as HTMLElement, this.changeDetector, child.executionContext));
+    child.nodes.forEach((node) =>
+      this.dom.compileTree(
+        node as HTMLElement,
+        child.changeDetector,
+        child.executionContext
+      )
+    );
   }
 
   private createChild(): ContainerChild {
-    const nodes = this.templateNodes.map(n => n.cloneNode(true));
+    const nodes = this.templateNodes.map((n) => n.cloneNode(true));
 
     return {
       nodes,
       detached: true,
       executionContext: this.executionContext.fork(),
+      changeDetector: this.changeDetector.parent,
     };
   }
 
   private removeChild(child: ContainerChild) {
-    child.nodes.forEach(node => node.parentNode.removeChild(node));
+    child.nodes.forEach((node) => node.parentNode.removeChild(node));
   }
 
   private removeAllChildren() {
     if (this.children.length) {
-      this.children.forEach(node => this.removeChild(node));
+      this.children.forEach((node) => this.removeChild(node));
       this.children = [];
     }
+  }
+
+  private createChildren(howMany: number) {
+    const newNodes = Array(howMany)
+      .fill()
+      .map(() => this.createChild());
+
+    newNodes.forEach((node) => this.compileChild(node));
+
+    return newNodes;
   }
 
   private adjustChildrenLength(length: number) {
     const children = this.children;
 
     if (children.length < length) {
-      const newNodes = Array(length - children.length).fill(null).map(() => this.createChild());
-      newNodes.forEach(node => this.compileChild(node));
+      const newNodes = this.createChildren(length - children.length);
       children.push(...newNodes);
       return;
     }
 
     if (children.length > length) {
-      children.slice(length).forEach(node => this.removeChild(node));
+      children.slice(length).forEach((node) => this.removeChild(node));
       children.length = length;
     }
   }
