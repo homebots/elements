@@ -1,3 +1,5 @@
+/// <reference types="reflect-metadata" />
+
 export const INPUTS_METADATA = 'inputs';
 
 export interface InputOptions {
@@ -6,21 +8,13 @@ export interface InputOptions {
 
 export interface InputWatcher {
   property: string;
-  options?: InputOptions;
+  options: InputOptions;
 }
 
 export function getInputMetadata(customElement: any): InputWatcher[] {
+  if (customElement.getMetadata) {
+    return customElement.getMetadata(INPUTS_METADATA);
+  }
+
   return Reflect.getMetadata(INPUTS_METADATA, customElement) || [];
-}
-
-export function Input(options?: InputOptions) {
-  return (target: any, property: string) => {
-    const inputs: InputWatcher[] = Reflect.getMetadata(INPUTS_METADATA, target) || [];
-    inputs.push({
-      property,
-      options,
-    });
-
-    Reflect.defineMetadata(INPUTS_METADATA, inputs, target);
-  };
 }

@@ -1,47 +1,57 @@
-import { ChangeDetector, ChangeDetectorRef } from './change-detection';
-import { DomHelpers } from './dom-helpers';
-import { InjectionToken, Injector, InjectorSymbol, Provider, Providers } from './injector';
-import { SyntaxRules } from './syntax-rules';
-import { IfContainer } from './containers/if-container';
+import { Inject, InjectionToken, Injector, Provider, setInjectorOf, Value } from '@homebots/injector';
+import { ChangeDetector } from './change-detection';
 import { ForContainer } from './containers/for-container';
+import { IfContainer } from './containers/if-container';
 import { ContainerRegistry } from './containers/registry';
 import { ExecutionContext, NullContext } from './execution-context';
+import { AddEventListenerRule } from './syntax/add-event-listener.rule';
+import { NodeReferenceRule } from './syntax/node-reference.rule';
+import { SetAttributeRule } from './syntax/set-attribute.rule';
+import { SetClassRule } from './syntax/set-class.rule';
+import { SetPropertyRule } from './syntax/set-property.rule';
+import { SyntaxRules } from './syntax/syntax-rules';
+import { ViewContainerRule } from './syntax/view-container.rule';
 
-export type ApplicationRef = InjectionToken<Application>;
-export const ApplicationRef = Symbol('ApplicationRef');
+export const ApplicationRef = new InjectionToken<Application>('ApplicationRef');
 
 export class Application {
-  private changeDetector: ChangeDetector;
+  @Inject() changeDetector: ChangeDetector;
+  @Inject() syntaxRules: SyntaxRules;
+  readonly injector: Injector;
 
-  constructor(rootNode: HTMLElement, providers: Providers) {
-    const injector = (rootNode[InjectorSymbol] = new Injector(null, providers));
-    injector.register({ type: ApplicationRef, useValue: this });
-    injector.register({ type: ExecutionContext, useValue: NullContext });
+  constructor(rootNode: HTMLElement, providers: Provider[]) {
+    this.injector = this.createInjector(rootNode, providers);
+    this.addSyntaxRules();
+  }
 
-    this.changeDetector = injector.get(ChangeDetectorRef);
+  protected createInjector(rootNode: HTMLElement, providers: Provider<unknown>[]) {
+    const injector = new Injector();
 
-    const syntaxRules = injector.get(SyntaxRules);
-    const domUtils = injector.get(DomHelpers);
+    setInjectorOf(rootNode, injector);
+
+    injector.provideAll(providers);
+    injector.provide(ApplicationRef, Value(this));
+    injector.provide(ExecutionContext, Value(NullContext));
+
+    return injector;
+  }
+
+  protected addSyntaxRules() {
+    const { syntaxRules, injector } = this;
     const containerRegistry = injector.get(ContainerRegistry);
 
-    syntaxRules.addRule((a) => a.charAt(0) === '#', domUtils.readReferences.bind(domUtils));
-    syntaxRules.addRule(
-      (a, e) => a.charAt(0) === '*' && e.nodeName === 'TEMPLATE',
-      domUtils.createTemplateContainerTarget.bind(domUtils),
-    );
-    syntaxRules.addRule((a) => a.charAt(0) === '(', domUtils.addEventListener.bind(domUtils));
-    syntaxRules.addRule(
-      (a) => a.charAt(0) === '[' || a.charAt(0) === '*',
-      domUtils.watchExpressionAndUpdateProperty.bind(domUtils),
-    );
-    syntaxRules.addRule((a) => a.charAt(0) === '@', domUtils.watchExpressionAndSetAttribute.bind(domUtils));
-    syntaxRules.addRule((a) => a.startsWith('[class.'), domUtils.watchExpressionAndChangeClassName.bind(domUtils));
+    syntaxRules.addRule(injector.get(NodeReferenceRule));
+    syntaxRules.addRule(injector.get(ViewContainerRule));
+    syntaxRules.addRule(injector.get(SetPropertyRule));
+    syntaxRules.addRule(injector.get(SetAttributeRule));
+    syntaxRules.addRule(injector.get(SetClassRule));
+    syntaxRules.addRule(injector.get(AddEventListenerRule));
 
     containerRegistry.set('if', IfContainer);
     containerRegistry.set('for', ForContainer);
   }
 
-  tick() {
+  check() {
     this.changeDetector.markAsDirtyAndCheck();
   }
 }

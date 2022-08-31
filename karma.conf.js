@@ -1,28 +1,17 @@
-// Karma configuration
-// Generated on Tue Jun 16 2020 22:38:17 GMT+0200 (Central European Summer Time)
-
-module.exports = function(config) {
+module.exports = function (config) {
   config.set({
-    basePath: '',
     frameworks: ['jasmine', 'karma-typescript'],
-
-    files: [
-      'src/**/*.ts',
-      'test/**/*.ts',
-    ],
-
+    files: ['./src/**/*.ts'],
     preprocessors: {
-      '**/*.ts': ['karma-typescript']
+      'src/**/*.ts': 'karma-typescript',
     },
-
     reporters: ['progress', 'karma-typescript'],
-    autoWatch: true,
-    browsers: [], // , 'Firefox'
-    singleRun: false,
-    concurrency: Infinity,
-
+    browsers: [],
     karmaTypescriptConfig: {
-      tsconfig: 'tsconfig.spec.json'
-    }
-  })
-}
+      tsconfig: 'tsconfig.spec.json',
+      bundlerOptions: {
+        transforms: [require('karma-typescript-es6-transform')()],
+      },
+    },
+  });
+};

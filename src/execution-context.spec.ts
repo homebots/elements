@@ -1,4 +1,4 @@
-import { ExecutionContext, SealedExecutionContext } from '../src/execution-context';
+import { ExecutionContext, SealedExecutionContext } from './execution-context';
 
 describe('ExecutionContext', () => {
   it('runs an expression with provided locals and element', () => {
@@ -10,7 +10,7 @@ describe('ExecutionContext', () => {
     expect(output).toBe('alice123');
   });
 
-  it('runs an expression multiple timess', () => {
+  it('runs an expression multiple times', () => {
     const context = new ExecutionContext(null);
     context.addLocals({ number: 123 });
 

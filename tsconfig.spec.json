@@ -1,13 +1,11 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "emitDecoratorMetadata": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "experimentalDecorators": true,
-    "module": "commonjs",
-    "sourceMap": true,
-    "target": "es2019",
-    "lib": ["ESNext", "DOM"],
-    "baseUrl": "./"
+    "emitDecoratorMetadata": true,
+    "types": ["jasmine"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules/**"]
 }

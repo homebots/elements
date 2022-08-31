@@ -1,8 +1,8 @@
 import { ChangeDetector, Changes } from '../change-detection';
 import { ExecutionContext } from '../execution-context';
-import { Input } from '../inputs';
-import { Inject } from '../injector';
-import { DomHelpers } from '../dom-helpers';
+import { Input } from '../component-decorators';
+import { Inject } from '@homebots/injector';
+import { DomScanner } from '../dom-scanner';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
@@ -14,14 +14,14 @@ interface ContainerChild {
 export class ForContainer {
   @Input() of: Iterable<any>;
   @Input() for: string;
-  @Inject() dom: DomHelpers;
+  @Inject() dom: DomScanner;
 
   private children: ContainerChild[] = [];
 
   constructor(
     private template: HTMLTemplateElement,
     private changeDetector: ChangeDetector,
-    private executionContext: ExecutionContext
+    private executionContext: ExecutionContext,
   ) {}
 
   _templateNodes: Node[];
@@ -78,8 +78,8 @@ export class ForContainer {
       return items;
     }
 
-    if (typeof items === number) {
-      return new Array(10).fill().map((_, k) => k + 1);
+    if (typeof items === 'number') {
+      return new Array(10).fill(0).map((_, k) => k + 1);
     }
 
     return [];
@@ -90,13 +90,7 @@ export class ForContainer {
   }
 
   private compileChild(child: ContainerChild) {
-    child.nodes.forEach((node) =>
-      this.dom.compileTree(
-        node as HTMLElement,
-        child.changeDetector,
-        child.executionContext
-      )
-    );
+    child.nodes.forEach((node) => this.dom.scanTree(node as HTMLElement, child.changeDetector, child.executionContext));
   }
 
   private createChild(): ContainerChild {
@@ -123,7 +117,7 @@ export class ForContainer {
 
   private createChildren(howMany: number) {
     const newNodes = Array(howMany)
-      .fill()
+      .fill(null)
       .map(() => this.createChild());
 
     newNodes.forEach((node) => this.compileChild(node));

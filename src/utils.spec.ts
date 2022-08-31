@@ -1,4 +1,4 @@
-import { noop, createTemplateFromHtml } from '../src/utils';
+import { noop, createTemplateFromHtml } from './utils';
 
 describe('utilities', () => {
   it('should create a template from a string', () => {
@@ -7,6 +7,7 @@ describe('utilities', () => {
 
     expect(template.tagName).toBe('TEMPLATE');
     expect(template.content.childNodes.length).toBe(1);
+    console.log(template);
   });
 
   it('exports a noop', () => {

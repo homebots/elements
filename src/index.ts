@@ -1,6 +1,7 @@
-export { Application, ApplicationRef } from './application';
+import 'reflect-metadata';
 
-export { bootstrap, BOOTSTRAP, BootstrapOptions, domReady } from './bootstrap';
+export { Application, ApplicationRef } from './application';
+export { Bootstrap, BootstrapOptions, domReady } from './bootstrap';
 
 export {
   ReactiveChangeDetector,
@@ -14,49 +15,25 @@ export {
   ZoneChangeDetector,
 } from './change-detection';
 
+export { Component, Child, Children, Input, Output } from './component-decorators';
+
 export {
-  addHostAttributes,
-  addTemplate,
-  Component,
   ComponentOptions,
-  defineComponent,
-  createComponent,
-  createComponentClass,
-  createComponentInjector,
-  CustomElement,
-  findParentComponent,
+  CustomHTMLElement,
   HostAttributes,
   LifecycleHook,
   OnBeforeCheck,
-  OnChanges,
-  OnChangesHook,
   OnDestroy,
   OnInit,
   ShadowRootInit,
   TemplateRef,
-  ShadowDomToggle,
+  CustomElement,
 } from './component';
 
 export { ContainerRegistry } from './containers/registry';
-
-export { DomHelpers, Child, Children, ContainerTarget, TemplateContainer } from './dom-helpers';
-
-export { DomEventEmitter, EventCallback, EventEmitter, Output, dispatchEvent } from './events';
-
+export { DomScanner } from './dom-scanner';
+export { DomEventEmitter, EventCallback, EventEmitter, dispatchDomEvent } from './events';
 export { ExecutionContext, ExecutionLocals, SealedExecutionContext, NullContext } from './execution-context';
-
-export {
-  getInjectorFrom,
-  Inject,
-  Injectable,
-  InjectableOptions,
-  InjectionToken,
-  Injector,
-  InjectorSymbol,
-  Provider,
-  Type,
-} from './injector';
-
-export { Input, InputOptions } from './inputs';
-
+export { InputOptions } from './inputs';
 export { createTemplateFromHtml, noop } from './utils';
+export { ShadowDomToggle } from './settings';

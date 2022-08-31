@@ -1,9 +1,9 @@
 import { ChangeDetector } from '../change-detection';
 import { ExecutionContext } from '../execution-context';
-import { Input } from '../inputs';
+import { Input } from '../component-decorators';
 import { setTimeoutNative } from '../utils';
-import { Inject } from '../injector';
-import { DomHelpers } from '../dom-helpers';
+import { Inject } from '@homebots/injector';
+import { DomScanner } from '../dom-scanner';
 
 const IF = 0;
 const ELSE = 1;
@@ -12,7 +12,7 @@ const NONE = 2;
 export class IfContainer {
   @Input() if: boolean;
   @Input() else: HTMLTemplateElement;
-  @Inject() dom: DomHelpers;
+  @Inject() dom: DomScanner;
 
   constructor(
     private template: HTMLTemplateElement,
@@ -47,9 +47,9 @@ export class IfContainer {
     const fragment = document.createDocumentFragment();
     const nodes = templateNodes.map((n) => n.cloneNode(true));
     const changeDetector = this.changeDetector.parent;
-    
+
     fragment.append(...nodes);
-    nodes.forEach((node) => this.dom.compileTree(node as HTMLElement, changeDetector, this.executionContext));
+    nodes.forEach((node) => this.dom.scanTree(node as HTMLElement, changeDetector, this.executionContext));
 
     this.changeDetector.markAsDirtyAndCheck();
 

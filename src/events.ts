@@ -1,38 +1,44 @@
-import { ChangeDetector } from './change-detection';
-import { ExecutionContext } from './execution-context';
+export type EventCallback<T = unknown> = (event: T) => void;
 
-export type EventCallback<T = any> = (event: T) => void;
-
-export interface EventEmitter<T = any> {
+export interface Emitter<T = unknown> {
   emit(data: T): void;
 }
 
-export class DomEventEmitter<T> implements EventEmitter<T> {
-  constructor(private element: HTMLElement, private event: string) {}
+export interface Callable<T> {
+  (data: T): void;
+}
 
-  emit(data: T) {
-    dispatchEvent(this.element, this.event, data);
+export interface Observable<T> {
+  subscribe(fn: Callable<T>): void;
+  unsubscribe(fn: Callable<T>): void;
+}
+
+export class EventEmitter<T = unknown> implements Observable<T>, Emitter<T> {
+  protected subscribers: Callable<T>[] = [];
+
+  emit(data: T): void {
+    this.subscribers.forEach((subscriber) => subscriber(data));
+  }
+
+  subscribe(fn: Callable<T>): void {
+    this.subscribers.push(fn);
+  }
+
+  unsubscribe(fn: Callable<T>): void {
+    this.subscribers = this.subscribers.filter((callable) => callable !== fn);
   }
 }
 
-export function Output(eventName: string) {
-  return function (target: any, property: string) {
-    // NOTE: DOM event names are always lower case
-    let emitter: EventEmitter;
-    Object.defineProperty(target, property, {
-      get() {
-        if (!emitter) {
-          emitter = new DomEventEmitter<any>(this, eventName.toLowerCase());
-        }
+export class DomEventEmitter<T> implements Emitter<T> {
+  constructor(private element: HTMLElement, private event: string) {}
 
-        return emitter;
-      },
-    });
-  };
+  emit(data: T) {
+    dispatchDomEvent(this.element, this.event, data);
+  }
 }
 
-export function dispatchEvent(element: HTMLElement, event: string, detail: any = {}) {
-  const customEvent = new CustomEvent(event, {
+export function dispatchDomEvent<T = unknown>(element: HTMLElement, event: string, detail?: T) {
+  const customEvent = new CustomEvent<T>(event, {
     detail,
     bubbles: true,
   });

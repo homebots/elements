@@ -1,13 +1,18 @@
 /// <reference types="zone.js/dist/zone.js" />
 
+import { InjectionToken } from '@homebots/injector';
 import * as clone from 'lodash.clone';
 import * as isEqual from 'lodash.isequal';
-import { CustomElement } from './component';
-import { InjectionToken } from './injector';
+import { CustomHTMLElement } from './component';
 import { AnyFunction, setTimeoutNative } from './utils';
 
 export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
 export type Expression<T> = () => T;
+export type ChangesCallback = (changes: Changes) => void;
+
+export interface OnChanges {
+  onChanges: ChangesCallback;
+}
 
 export interface Change<T> {
   value: T;
@@ -24,16 +29,13 @@ export interface Watcher {
   callback?: ChangeCallback<unknown>;
   lastValue?: any;
   useEquals?: boolean;
-  metadata?: {
-    property: string;
-    isInput: boolean;
-    firstTime: boolean;
-  };
+  property?: string;
+  firstTime?: boolean;
 }
 
 let uid = 0;
 
-export const ChangeDetectorRef: InjectionToken<ChangeDetector> = Symbol('ChangeDetector');
+export const ChangeDetectorRef = new InjectionToken<ChangeDetector>('ChangeDetector');
 
 export interface ChangeDetector {
   id?: string;
@@ -64,7 +66,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
   private _afterCheck: AnyFunction[] = [];
   private _beforeCheck: AnyFunction[] = [];
 
-  constructor(protected target: CustomElement = null, public parent: ReactiveChangeDetector = null) {
+  constructor(protected target: CustomHTMLElement = null, public parent: ReactiveChangeDetector = null) {
     if (this.parent) {
       this.parent.children.set(this.target, this);
     }
@@ -120,19 +122,18 @@ export class ReactiveChangeDetector implements ChangeDetector {
   }
 
   check() {
-    if (this.state === 'checked') return;
+    if (this.state === 'checked') {
+      return;
+    }
 
     const inputChanges: Changes = {};
 
     this._beforeCheck.forEach((fn) => fn(inputChanges));
+
     this.state = 'checking';
+    this.watchers.forEach((watcher) => this.checkWatcher(inputChanges, watcher));
 
-    const hasInputChanges = this.watchers.reduce(
-      (value, watcher) => value || this.checkWatcher(inputChanges, watcher),
-      false,
-    );
-
-    this._afterCheck.forEach(hasInputChanges ? (fn) => fn(inputChanges) : (fn) => fn(null));
+    this._afterCheck.forEach((fn) => fn(inputChanges));
 
     if (this.state !== 'checking') {
       this.scheduleTreeCheck();
@@ -145,7 +146,6 @@ export class ReactiveChangeDetector implements ChangeDetector {
   protected checkWatcher(changes: Changes, watcher: Watcher) {
     const newValue = this.runWatcher(watcher.expression, this.target, []);
     const lastValue = watcher.lastValue;
-
     const useEquals = watcher.useEquals;
     const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !isEqual(newValue, lastValue));
 
@@ -153,14 +153,14 @@ export class ReactiveChangeDetector implements ChangeDetector {
       return false;
     }
 
-    if (watcher.metadata?.isInput) {
-      changes[watcher.metadata.property] = {
+    if (watcher.property) {
+      changes[watcher.property] = {
         value: newValue,
         lastValue,
-        firstTime: watcher.metadata.firstTime,
+        firstTime: watcher.firstTime,
       };
 
-      watcher.metadata.firstTime = false;
+      watcher.firstTime = false;
     }
 
     watcher.lastValue = useEquals ? clone(newValue) : newValue;
@@ -168,8 +168,6 @@ export class ReactiveChangeDetector implements ChangeDetector {
     if (watcher.callback) {
       this.runWatcherCallback(watcher.callback, null, [newValue, lastValue]);
     }
-
-    return watcher.metadata?.isInput;
   }
 
   protected runWatcher(...args: any[]) {
@@ -212,7 +210,7 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
 
   readonly properties: ZoneProperties = { changeDetector: this };
 
-  parent: ZoneChangeDetector;
+  parent: ZoneChangeDetector | null = null;
   protected _zone: Zone;
 
   private get zone() {
@@ -227,7 +225,7 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
     return this.zone.runGuarded(callback, applyThis, applyArgs, this.id);
   }
 
-  fork(component: CustomElement) {
+  fork(component: CustomHTMLElement) {
     return new ZoneChangeDetector(component, this);
   }
 
@@ -246,7 +244,7 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
     callback: VoidFunction,
     applyThis: any,
     applyArgs: any[],
-    source: string,
+    __: string,
   ) {
     const output = delegate.invoke(target, callback, applyThis, applyArgs);
     this.scheduleZoneCheck(target);
