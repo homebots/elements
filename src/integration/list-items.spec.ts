@@ -1,4 +1,4 @@
-import { Component } from '../';
+import { Component, Bootstrap } from '../';
 import { createAndInjectHtml, wait } from './helpers';
 
 describe('a list of items with for-of', () => {
@@ -23,8 +23,8 @@ describe('a list of items with for-of', () => {
   it('should repeat correctly the items in a template', async () => {
     const html = `<x-list></x-list>`;
     const node = createAndInjectHtml(html);
+    Bootstrap.createApplication({ rootNode: node });
     const list = node.firstChild;
-
     expect(list).not.toBe(undefined);
 
     await wait(10);

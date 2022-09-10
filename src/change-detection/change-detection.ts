@@ -1,5 +1,5 @@
 import { InjectionToken } from '@homebots/injector';
-import { AnyFunction,  } from '../utils';
+import { AnyFunction } from '../utils';
 
 export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
 export type Expression<T> = () => T;
@@ -15,9 +15,7 @@ export interface Change<T> {
   firstTime?: boolean;
 }
 
-export interface Changes {
-  [property: string]: Change<unknown>;
-}
+export class Changes extends Map<string, Change<unknown>> {}
 
 export interface Watcher {
   expression: AnyFunction;

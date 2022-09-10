@@ -1,5 +1,5 @@
 import { Subscription } from 'rxjs';
-import { ChangeDetectorRef, ChangesCallback } from './change-detection/change-detection';
+import { ChangeDetectorRef, Changes, ChangesCallback } from './change-detection/change-detection';
 import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { ExecutionContext } from './execution-context';
 import { createTemplateFromHtml, noop } from './utils';
@@ -160,7 +160,7 @@ export class CustomElement {
     );
 
     changeDetector.beforeCheck(() => component.onBeforeCheck());
-    changeDetector.afterCheck((changes) => changes && component.onChanges(changes));
+    changeDetector.afterCheck((changes: Changes) => changes.size && component.onChanges(changes));
     changeDetector.markAsDirtyAndCheck();
   }
 

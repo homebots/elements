@@ -1,4 +1,4 @@
-import { ChangeDetector, Changes } from '../change-detection';
+import { ChangeDetector, Changes } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Input } from '../component-decorators';
 import { Inject } from '@homebots/injector';
@@ -40,7 +40,7 @@ export class ForContainer {
       return;
     }
 
-    if (changes.for) {
+    if (changes.has('for')) {
       this.resetExecutionContext();
     }
 

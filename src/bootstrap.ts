@@ -23,7 +23,7 @@ const defaultOptions = {
 
 export interface BootstrapOptions {
   rootNode?: HTMLElement;
-  providers: Provider[];
+  providers?: Provider[];
 }
 
 export class Bootstrap {

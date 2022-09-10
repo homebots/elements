@@ -76,9 +76,9 @@ export class ReactiveChangeDetector implements ChangeDetector {
       return;
     }
 
-    const inputChanges: Changes = {};
+    const inputChanges = new Changes();
 
-    this._beforeCheck.forEach((fn) => fn(inputChanges));
+    this._beforeCheck.forEach((fn) => fn());
 
     this.state = 'checking';
     this.watchers.forEach((watcher) => this.checkWatcher(inputChanges, watcher));
@@ -104,11 +104,11 @@ export class ReactiveChangeDetector implements ChangeDetector {
     }
 
     if (watcher.property) {
-      changes[watcher.property] = {
+      changes.set(watcher.property, {
         value: newValue,
         lastValue,
         firstTime: watcher.firstTime,
-      };
+      });
 
       watcher.firstTime = false;
     }

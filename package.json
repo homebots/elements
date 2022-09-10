@@ -7,7 +7,7 @@
   "scripts": {
     "clean": "rm -rf dist/",
     "test": "karma start --single-run",
-    "tdd": "while (true) do karma start --auto-watch; sleep 1; done",
+    "tdd": "while (true) do karma start --auto-watch --reporters dots; sleep 1; done",
     "build": "npm run clean && tsc --project ./tsconfig.json",
     "watch": "nodemon -e ts,json,js -w src -x npm run build"
   },
