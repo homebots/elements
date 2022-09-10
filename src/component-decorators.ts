@@ -1,9 +1,9 @@
 /// <reference types="reflect-metadata" />
 
 import { DomEventEmitter, Emitter } from './events';
-import { Bootstrap } from './bootstrap';
 import { ComponentOptions, CustomElement } from './component';
 import { InputOptions, INPUTS_METADATA, InputWatcher } from './inputs';
+import { domReady } from './utils';
 
 export function Child(selector: string, isStatic?: boolean) {
   return (target: any, property: string) => {
@@ -30,7 +30,7 @@ export function Children(selector: string) {
 
 export function Component(options: ComponentOptions) {
   return function (ComponentClass: typeof HTMLElement) {
-    Bootstrap.whenReady(() => CustomElement.define(ComponentClass, options));
+    domReady().then(() => CustomElement.define(ComponentClass, options));
   };
 }
 

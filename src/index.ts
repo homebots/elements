@@ -1,5 +1,5 @@
 export { Application, ApplicationRef } from './application';
-export { Bootstrap, BootstrapOptions, domReady } from './bootstrap';
+export { Bootstrap, BootstrapOptions } from './bootstrap';
 
 export {
   Change,
@@ -33,5 +33,5 @@ export { DomScanner } from './dom-scanner';
 export { DomEventEmitter, EventCallback, EventEmitter, dispatchDomEvent } from './events';
 export { ExecutionContext, ExecutionLocals, SealedExecutionContext, NullContext } from './execution-context';
 export { InputOptions } from './inputs';
-export { createTemplateFromHtml, noop } from './utils';
+export { createTemplateFromHtml, noop, domReady } from './utils';
 export { ShadowDomToggle } from './settings';
