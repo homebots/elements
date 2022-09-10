@@ -2,6 +2,7 @@ module.exports = function (config) {
   config.set({
     frameworks: ['jasmine', 'karma-typescript'],
     files: ['./src/**/*.ts'],
+    singleRun: true,
     preprocessors: {
       'src/**/*.ts': 'karma-typescript',
     },
