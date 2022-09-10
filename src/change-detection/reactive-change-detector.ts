@@ -1,5 +1,5 @@
-import * as clone from 'lodash.clone';
-import * as isEqual from 'lodash.isequal';
+import { default as clone } from 'lodash.clone';
+import { default as isEqual } from 'lodash.isequal';
 import { AnyFunction, setTimeoutNative } from '../utils';
 import { CustomHTMLElement } from '../component';
 import { ChangeCallback, ChangeDetector, Changes, Expression, Watcher } from './change-detection';

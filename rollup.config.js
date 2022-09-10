@@ -9,5 +9,5 @@ export default {
     dir: '.',
     format: 'es',
   },
-  plugins: [typescript({ module: 'CommonJS' }), resolve(), commonjs({ extensions: ['.js', '.ts'] })],
+  plugins: [typescript({ module: 'esnext' }), resolve(), commonjs({ extensions: ['.js', '.ts'] })],
 };
