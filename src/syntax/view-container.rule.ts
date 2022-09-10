@@ -18,14 +18,6 @@ export class TemplateProxy<T extends OnChanges> implements OnChanges {
     return target[proxySymbol] === true;
   }
 
-  getMetadata(name: any) {
-    if (this.target) {
-      return Reflect.getMetadata(name, this.target);
-    }
-
-    return null;
-  }
-
   onChanges(changes: Changes) {
     if (this.target) {
       this.target.onChanges(changes);
@@ -72,8 +64,8 @@ export class ViewContainerRule implements SyntaxRule {
     containerName: string,
     _: string,
   ) {
-    const target = this.createContainerByName(containerName, element, changeDetector, executionContext);
-    element.container.setTarget(target);
+    const containerHandler = this.createContainerByName(containerName, element, changeDetector, executionContext);
+    element.container.setTarget(containerHandler);
   }
 
   createContainerByName(

@@ -1,5 +1,5 @@
-import { Inject, InjectionToken, Injector, Provider, setInjectorOf, Value } from '@homebots/injector';
-import { ChangeDetector } from './change-detection/change-detection';
+import { Inject, InjectionToken, Injector, Provider, Value } from '@homebots/injector';
+import { ChangeDetector, ChangeDetectorRef } from './change-detection/change-detection';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
 import { ContainerRegistry } from './containers/registry';
@@ -15,29 +15,26 @@ import { ViewContainerRule } from './syntax/view-container.rule';
 export const ApplicationRef = new InjectionToken<Application>('ApplicationRef');
 
 export class Application {
-  @Inject() changeDetector: ChangeDetector;
-  @Inject() syntaxRules: SyntaxRules;
-  readonly injector: Injector;
+  @Inject(ChangeDetectorRef) changeDetector: ChangeDetector;
 
   constructor(rootNode: HTMLElement, providers: Provider[]) {
-    this.injector = this.createInjector(rootNode, providers);
+    this.setupInjector(rootNode, providers);
     this.addSyntaxRules();
   }
 
-  protected createInjector(rootNode: HTMLElement, providers: Provider<unknown>[]) {
-    const injector = new Injector();
-
-    setInjectorOf(rootNode, injector);
+  protected setupInjector(rootNode: HTMLElement, providers: Provider<unknown>[]) {
+    const injector = Injector.global;
+    Injector.setInjectorOf(rootNode, injector);
+    Injector.setInjectorOf(this, injector);
 
     injector.provideAll(providers);
     injector.provide(ApplicationRef, Value(this));
     injector.provide(ExecutionContext, Value(NullContext));
-
-    return injector;
   }
 
   protected addSyntaxRules() {
-    const { syntaxRules, injector } = this;
+    const injector = Injector.getInjectorOf(this);
+    const syntaxRules = injector.get(SyntaxRules);
     const containerRegistry = injector.get(ContainerRegistry);
 
     syntaxRules.addRule(injector.get(NodeReferenceRule));

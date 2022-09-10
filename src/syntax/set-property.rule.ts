@@ -41,9 +41,9 @@ export class SetPropertyRule implements SyntaxRule {
     });
   }
 
-  setProperty(element: HTMLElement, property: string, value: any) {
+  setProperty(element: HTMLElement | TemplateProxy<any>, property: string, value: any) {
     if (TemplateProxy.isProxy(element)) {
-      (element as any).setProperty(property, value);
+      (element as TemplateProxy<any>).setProperty(property, value);
       return;
     }
 
