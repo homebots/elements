@@ -1,6 +1,7 @@
 import { Provider } from '@homebots/injector';
 import { Application } from './application';
-import { ChangeDetectorRef, ReactiveChangeDetector } from './change-detection';
+import { ChangeDetectorRef } from './change-detection/change-detection';
+import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 
 // Thanks @stimulus:
 // https://github.com/stimulusjs/stimulus/blob/master/packages/%40stimulus/core/src/application.ts
@@ -29,7 +30,7 @@ export class Bootstrap {
   private static promise: Promise<unknown> = domReady();
 
   static whenReady(fn: (...args: any[]) => any) {
-    return this.promise = this.promise.then(fn);
+    return (this.promise = this.promise.then(fn));
   }
 
   static createApplication(options?: BootstrapOptions) {

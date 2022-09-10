@@ -1,5 +1,5 @@
 import { Injectable } from '@homebots/injector';
-import { ChangeDetector } from '../change-detection';
+import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
 

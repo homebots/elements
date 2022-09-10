@@ -1,5 +1,6 @@
 import { Subscription } from 'rxjs';
-import { ChangeDetectorRef, ChangesCallback, ReactiveChangeDetector } from './change-detection';
+import { ChangeDetectorRef, ChangesCallback } from './change-detection/change-detection';
+import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { ExecutionContext } from './execution-context';
 import { createTemplateFromHtml, noop } from './utils';
 import { DomScanner } from './dom-scanner';
@@ -130,9 +131,9 @@ export class CustomElement {
 
   static createComponentInjector(component: CustomHTMLElement, options: ComponentOptions) {
     const parentInjector = options.parentInjector || getInjectorOf(component.parentComponent);
-    const injector = new Injector(parentInjector);
+    const injector = new Injector(parentInjector || Injector.global);
 
-    injector.provideAll(options.providers);
+    injector.provideAll(options.providers || []);
 
     if (!injector.canProvide(ChangeDetectorRef)) {
       injector.provide(ChangeDetectorRef, ReactiveChangeDetector);

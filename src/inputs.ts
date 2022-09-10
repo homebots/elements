@@ -1,5 +1,3 @@
-/// <reference types="reflect-metadata" />
-
 export const INPUTS_METADATA = 'inputs';
 
 export interface InputOptions {

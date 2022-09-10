@@ -1,3 +1,5 @@
+/// <reference types="reflect-metadata" />
+
 import { DomEventEmitter, Emitter } from './events';
 import { Bootstrap } from './bootstrap';
 import { ComponentOptions, CustomElement } from './component';

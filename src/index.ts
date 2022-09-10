@@ -2,7 +2,6 @@ export { Application, ApplicationRef } from './application';
 export { Bootstrap, BootstrapOptions, domReady } from './bootstrap';
 
 export {
-  ReactiveChangeDetector,
   Change,
   ChangeCallback,
   ChangeDetector,
@@ -10,8 +9,9 @@ export {
   Changes,
   Expression,
   Watcher,
-  ZoneChangeDetector,
-} from './change-detection';
+} from './change-detection/change-detection';
+export { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
+export { ZoneChangeDetector } from './change-detection/zone-change-detector';
 
 export { Component, Child, Children, Input, Output } from './component-decorators';
 

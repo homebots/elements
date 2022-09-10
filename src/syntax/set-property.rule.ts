@@ -1,7 +1,7 @@
 import { Injectable } from '@homebots/injector';
 import { getInputMetadata } from '../inputs';
 import { isTemplateNode } from '../utils';
-import { ChangeDetector } from '../change-detection';
+import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
 import { TemplateProxy } from './view-container.rule';

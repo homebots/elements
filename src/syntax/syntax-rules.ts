@@ -1,5 +1,5 @@
 import { Injectable } from '@homebots/injector';
-import { ChangeDetector } from '../change-detection';
+import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 
 export interface SyntaxRule {
@@ -15,7 +15,7 @@ export interface SyntaxRule {
 
 @Injectable()
 export class SyntaxRules {
-  protected rules: Array<SyntaxRule>;
+  protected rules: Array<SyntaxRule> = [];
   protected cleanAttributeRe = /^[^a-z]|[^a-z]$/g;
 
   addRule(rule: SyntaxRule) {

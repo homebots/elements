@@ -1,5 +1,5 @@
 import { Inject, InjectionToken, Injector, Provider, setInjectorOf, Value } from '@homebots/injector';
-import { ChangeDetector } from './change-detection';
+import { ChangeDetector } from './change-detection/change-detection';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
 import { ContainerRegistry } from './containers/registry';

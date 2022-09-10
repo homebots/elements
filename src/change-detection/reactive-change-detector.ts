@@ -1,60 +1,10 @@
-/// <reference types="zone.js/dist/zone.js" />
-
-import { InjectionToken } from '@homebots/injector';
 import * as clone from 'lodash.clone';
 import * as isEqual from 'lodash.isequal';
-import { CustomHTMLElement } from './component';
-import { AnyFunction, setTimeoutNative } from './utils';
-
-export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined) => void;
-export type Expression<T> = () => T;
-export type ChangesCallback = (changes: Changes) => void;
-
-export interface OnChanges {
-  onChanges: ChangesCallback;
-}
-
-export interface Change<T> {
-  value: T;
-  lastValue: T | undefined;
-  firstTime?: boolean;
-}
-
-export interface Changes {
-  [property: string]: Change<unknown>;
-}
-
-export interface Watcher {
-  expression: AnyFunction;
-  callback?: ChangeCallback<unknown>;
-  lastValue?: any;
-  useEquals?: boolean;
-  property?: string;
-  firstTime?: boolean;
-}
+import { AnyFunction, setTimeoutNative } from '../utils';
+import { CustomHTMLElement } from '../component';
+import { ChangeCallback, ChangeDetector, Changes, Expression, Watcher } from './change-detection';
 
 let uid = 0;
-
-export const ChangeDetectorRef = new InjectionToken<ChangeDetector>('ChangeDetector');
-
-export interface ChangeDetector {
-  id?: string;
-  parent?: ChangeDetector;
-
-  beforeCheck(fn: AnyFunction): void;
-  afterCheck(fn: AnyFunction): void;
-
-  markAsDirtyAndCheck(): void;
-  markTreeForCheck(): void;
-  scheduleTreeCheck(): void;
-  check(): void;
-  checkTree(): void;
-  unregister(): void;
-  watch<T>(expression: Watcher | Expression<T>): void;
-  watch<T>(expression: Expression<T>, callback: ChangeCallback<T>, useEquals?: boolean): void;
-  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
-  fork(target?: any): ChangeDetector;
-}
 
 export class ReactiveChangeDetector implements ChangeDetector {
   readonly id = `@${++uid}`;
@@ -196,79 +146,5 @@ export class ReactiveChangeDetector implements ChangeDetector {
 
   fork(target?: any) {
     return new ReactiveChangeDetector(target || this.target, this);
-  }
-}
-
-interface ZoneProperties {
-  changeDetector: ChangeDetector;
-}
-
-export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSpec, ChangeDetector {
-  get name() {
-    return this.id;
-  }
-
-  readonly properties: ZoneProperties = { changeDetector: this };
-
-  parent: ZoneChangeDetector | null = null;
-  protected _zone: Zone;
-
-  private get zone() {
-    if (!this._zone) {
-      this._zone = (this.parent?.zone || Zone.root).fork(this);
-    }
-
-    return this._zone;
-  }
-
-  run<T>(callback: Function, applyThis?: any, applyArgs?: any[]): T {
-    return this.zone.runGuarded(callback, applyThis, applyArgs, this.id);
-  }
-
-  fork(component: CustomHTMLElement) {
-    return new ZoneChangeDetector(component, this);
-  }
-
-  protected runWatcherCallback(callback: Function, applyThis?: any, applyArgs?: any[]) {
-    return this.zone.runGuarded(callback, applyThis, applyArgs, this.id);
-  }
-
-  protected runWatcher(...args: any[]) {
-    return super.run.apply(this, args);
-  }
-
-  onInvoke(
-    delegate: ZoneDelegate,
-    _: Zone,
-    target: Zone,
-    callback: VoidFunction,
-    applyThis: any,
-    applyArgs: any[],
-    __: string,
-  ) {
-    const output = delegate.invoke(target, callback, applyThis, applyArgs);
-    this.scheduleZoneCheck(target);
-
-    return output;
-  }
-
-  onInvokeTask(delegate: ZoneDelegate, _: Zone, target: Zone, task: Task, applyThis: any, applyArgs: any[]) {
-    const output = delegate.invokeTask(target, task, applyThis, applyArgs);
-    this.scheduleZoneCheck(target);
-
-    return output;
-  }
-
-  onScheduleTask(delegate: ZoneDelegate, _: Zone, target: Zone, task: Task) {
-    const scheduledTask = delegate.scheduleTask(target, task);
-    this.scheduleZoneCheck(target);
-
-    return scheduledTask;
-  }
-
-  private scheduleZoneCheck(zone: Zone) {
-    const changeDetector: ChangeDetector = zone.get('changeDetector');
-
-    changeDetector.markAsDirtyAndCheck();
   }
 }

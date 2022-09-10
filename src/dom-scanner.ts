@@ -1,4 +1,4 @@
-import { ChangeDetector } from './change-detection';
+import { ChangeDetector } from './change-detection/change-detection';
 import { ExecutionContext } from './execution-context';
 import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from './syntax/syntax-rules';
@@ -18,7 +18,7 @@ export class DomScanner {
     if (isTemplateNode(element)) {
       const container = ((element as any).container = new TemplateProxy());
       changeDetector = changeDetector.fork(container);
-      changeDetector.afterCheck((changes) => container.onChanges(changes));
+      changeDetector.afterCheck((changes) => !isEmpty(changes) && container.onChanges(changes));
     }
 
     element
@@ -50,4 +50,8 @@ export class DomScanner {
 
     this.scanElement(elementOrShadowRoot as HTMLElement, changeDetector, executionContext);
   }
+}
+
+function isEmpty(object: any) {
+  return !object || Object.keys(object).length === 0;
 }
