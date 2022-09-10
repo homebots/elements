@@ -2,7 +2,7 @@
   "name": "@homebots/elements",
   "version": "0.6.0",
   "description": "Microframework to write modern web apps using latest ES/HTML/CSS stuff",
-  "main": "./index.js",
+  "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {
     "clean": "rm -rf dist/",
