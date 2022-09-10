@@ -29,7 +29,7 @@ export class Bootstrap {
   private static promise: Promise<unknown> = domReady();
 
   static whenReady(fn: (...args: any[]) => any) {
-    this.promise = this.promise.then(fn);
+    return this.promise = this.promise.then(fn);
   }
 
   static createApplication(options?: BootstrapOptions) {

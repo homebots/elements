@@ -1,4 +1,4 @@
-import { ExecutionContext, SealedExecutionContext } from './execution-context';
+import { ExecutionContext, SealedExecutionContext } from '.';
 
 describe('ExecutionContext', () => {
   it('runs an expression with provided locals and element', () => {

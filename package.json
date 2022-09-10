@@ -6,8 +6,8 @@
   "typings": "./dist/index.d.ts",
   "scripts": {
     "clean": "rm -rf dist/",
-    "test": "./node_modules/.bin/karma start --watch=false",
-    "tdd": "./node_modules/.bin/karma start --watch",
+    "test": "karma start --single-run",
+    "tdd": "while (true) do karma start --auto-watch; sleep 1; done",
     "build": "npm run clean && tsc --project ./tsconfig.json",
     "watch": "nodemon -e ts,json,js -w src -x npm run build"
   },
@@ -25,6 +25,7 @@
     "@types/node": "^18.7.16",
     "jasmine": "^4.4.0",
     "karma": "^6.4.0",
+    "karma-chrome-launcher": "^3.1.1",
     "karma-jasmine": "^5.1.0",
     "karma-typescript": "^5.5.3",
     "karma-typescript-es6-transform": "^5.5.3",
@@ -32,6 +33,7 @@
     "lodash.isequal": "^4.5.0",
     "nodemon": "^2.0.19",
     "nyc": "^15.1.0",
+    "puppeteer": "^17.1.3",
     "reflect-metadata": "^0.1.13",
     "rollup": "^2.26.8",
     "ts-node": "^10.9.1",

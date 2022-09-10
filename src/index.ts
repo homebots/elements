@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 export { Application, ApplicationRef } from './application';
 export { Bootstrap, BootstrapOptions, domReady } from './bootstrap';
 

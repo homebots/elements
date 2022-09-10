@@ -1,4 +1,4 @@
-import { noop, createTemplateFromHtml } from './utils';
+import { noop, createTemplateFromHtml } from '.';
 
 describe('utilities', () => {
   it('should create a template from a string', () => {
