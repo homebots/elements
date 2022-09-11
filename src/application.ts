@@ -1,15 +1,20 @@
-import { Inject, InjectionToken, Injector, Provider, Value } from '@homebots/injector';
+import { InjectionToken, Injector, Provider, Value } from '@homebots/injector';
+import { DomScanner } from './dom/dom-scanner';
 import { ChangeDetector, ChangeDetectorRef } from './change-detection/change-detection';
 import { ExecutionContext, NullContext } from './execution-context';
 
 export const ApplicationRef = new InjectionToken<Application>('ApplicationRef');
 
 export class Application {
-  @Inject(ChangeDetectorRef) changeDetector: ChangeDetector;
+  private changeDetector: ChangeDetector;
 
   constructor(rootNode: HTMLElement, providers: Provider[]) {
     this.setupInjector(rootNode, providers);
+    const injector = this.injector();
     (rootNode as any).application = this;
+
+    this.changeDetector = injector.createNew(ChangeDetectorRef);
+    injector.get(DomScanner).scanTree(rootNode, this.changeDetector, new ExecutionContext(rootNode));
   }
 
   protected setupInjector(rootNode: HTMLElement, providers: Provider<unknown>[]) {
@@ -25,5 +30,9 @@ export class Application {
 
   check() {
     this.changeDetector.markAsDirtyAndCheck();
+  }
+
+  injector() {
+    return Injector.getInjectorOf(this);
   }
 }

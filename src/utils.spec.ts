@@ -7,7 +7,6 @@ describe('utilities', () => {
 
     expect(template.tagName).toBe('TEMPLATE');
     expect(template.content.childNodes.length).toBe(1);
-    console.log(template);
   });
 
   it('exports a noop', () => {

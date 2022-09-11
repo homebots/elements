@@ -13,6 +13,7 @@ import { SetClassRule } from './syntax/set-class.rule';
 import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
 import { ViewContainerRule } from './syntax/view-container.rule';
+import { ShadowDomToggle } from 'settings';
 
 const defaultChangeDetector = { type: ChangeDetectorRef, use: ReactiveChangeDetector };
 const defaultOptions = {
@@ -23,6 +24,7 @@ const defaultOptions = {
 export interface BootstrapOptions {
   rootNode?: HTMLElement;
   providers?: Provider[];
+  useShadowDom?: boolean;
 }
 
 export class Bootstrap {
@@ -46,6 +48,10 @@ export class Bootstrap {
 
     const application = new Application(rootNode, providers);
     Bootstrap.whenReady(() => application.check());
+
+    if (options.useShadowDom !== undefined) {
+      application.injector().get(ShadowDomToggle).toggle(options.useShadowDom);
+    }
 
     return application;
   }

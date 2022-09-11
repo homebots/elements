@@ -25,7 +25,12 @@ export class ExecutionContext {
 
   run(expression: string, localValues?: ExecutionLocals) {
     const fn = this.compile(expression, localValues);
-    return fn();
+    try {
+      return fn();
+    } catch (e) {
+      console.error(expression, e.message);
+      throw e;
+    }
   }
 
   compile(expression: string, localValues?: ExecutionLocals) {

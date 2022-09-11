@@ -11,4 +11,8 @@ export class ShadowDomToggle {
   disable() {
     this.enabled = false;
   }
+
+  toggle(value: boolean) {
+    this.enabled = Boolean(value);
+  }
 }
