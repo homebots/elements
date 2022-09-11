@@ -1,9 +1,9 @@
-import { noop, createTemplateFromHtml } from '.';
+import { noop, Dom } from '.';
 
 describe('utilities', () => {
   it('should create a template from a string', () => {
     const string = '  <div>text</div>   ';
-    const template = createTemplateFromHtml(string);
+    const template = Dom.createTemplateFromHtml(string);
 
     expect(template.tagName).toBe('TEMPLATE');
     expect(template.content.childNodes.length).toBe(1);

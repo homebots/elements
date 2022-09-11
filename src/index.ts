@@ -31,9 +31,11 @@ export {
 } from './component';
 
 export { ContainerRegistry } from './containers/registry';
-export { DomScanner } from './dom-scanner';
+export { DomScanner } from './dom/dom-scanner';
 export { DomEventEmitter, EventCallback, EventEmitter, dispatchDomEvent } from './events';
 export { ExecutionContext, ExecutionLocals, SealedExecutionContext, NullContext } from './execution-context';
 export { InputOptions } from './inputs';
-export { createTemplateFromHtml, noop, domReady } from './utils';
+export { noop, domReady } from './utils';
 export { ShadowDomToggle } from './settings';
+export { Dom } from './dom/dom';
+export * from '@homebots/injector';

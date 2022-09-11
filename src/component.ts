@@ -2,10 +2,11 @@ import { Subscription } from 'rxjs';
 import { ChangeDetectorRef, Changes, ChangesCallback } from './change-detection/change-detection';
 import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { ExecutionContext } from './execution-context';
-import { createTemplateFromHtml, noop } from './utils';
-import { DomScanner } from './dom-scanner';
+import { noop } from './utils';
+import { DomScanner } from './dom/dom-scanner';
 import { InjectionToken, TreeInjector as Injector, Provider, Value } from '@homebots/injector';
 import { ShadowDomToggle } from './settings';
+import { Dom } from './dom/dom';
 
 export interface ShadowRootInit {
   mode: 'open' | 'closed';
@@ -166,7 +167,7 @@ export class CustomElement {
       templateText += `<style>${options.styles}</style>`;
     }
 
-    const templateRef = createTemplateFromHtml(templateText);
+    const templateRef = Dom.createTemplateFromHtml(templateText);
     const content = templateRef.content.cloneNode(true);
     Injector.getInjectorOf(component).provide(TemplateRef, Value(templateRef));
 

@@ -1,10 +1,9 @@
 import { Injectable } from '@homebots/injector';
 import { getInputMetadata } from '../inputs';
-import { isTemplateNode } from '../utils';
 import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
-import { TemplateProxy } from './view-container.rule';
+import { Dom } from '../dom/dom';
 
 type SetPropertyCallback = (property: string, value: any) => void;
 interface OnSetProperty {
@@ -27,27 +26,17 @@ export class SetPropertyRule implements SyntaxRule {
     expression: string,
   ) {
     const transformedProperty = this.findElementProperty(element, property);
-    const isTemplate = isTemplateNode(element);
-    const inputProperties = getInputMetadata(isTemplate ? (element as any).container : element);
+    const inputProperties = Dom.isTemplateNode(element) ? [] : getInputMetadata(element);
     const inputOptions = inputProperties.find((p) => p.property === property);
-    const useEquals = inputOptions?.options.useEquals;
+    const useEquals = !!inputOptions?.options.useEquals;
 
     changeDetector.watch({
       expression: () => executionContext.run(expression),
-      callback: (value: any) => this.setProperty(element, transformedProperty, value),
+      callback: (value: any) => Dom.setProperty(element, transformedProperty, value),
       property,
       useEquals,
       firstTime: true,
     });
-  }
-
-  setProperty(element: HTMLElement | TemplateProxy<any>, property: string, value: any) {
-    if (TemplateProxy.isProxy(element)) {
-      (element as TemplateProxy<any>).setProperty(property, value);
-      return;
-    }
-
-    element[property] = value;
   }
 
   findElementProperty(element: HTMLElement, attributeName: string): string {

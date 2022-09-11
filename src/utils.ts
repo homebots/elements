@@ -1,18 +1,5 @@
-export function isTemplateNode(node?: Node): node is HTMLTemplateElement {
-  return node && node.nodeName === 'TEMPLATE';
-}
-
-export type AnyFunction = (...args: any[]) => any;
-
-export function createTemplateFromHtml(html: string): HTMLTemplateElement {
-  const templateRef = document.createElement('template');
-  templateRef.innerHTML = html.trim();
-  templateRef.normalize();
-
-  return templateRef;
-}
-
 export const noop = () => {};
+export type AnyFunction = (...args: any[]) => any;
 export type Fn = Function;
 
 // istanbul ignore next

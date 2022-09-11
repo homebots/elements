@@ -1,9 +1,9 @@
-import { ChangeDetector, Changes } from './change-detection/change-detection';
-import { ExecutionContext } from './execution-context';
+import { ChangeDetector, Changes } from '../change-detection/change-detection';
+import { ExecutionContext } from '../execution-context';
 import { Injectable, Inject } from '@homebots/injector';
-import { SyntaxRules } from './syntax/syntax-rules';
-import { TemplateProxy } from './syntax/view-container.rule';
-import { isTemplateNode } from './utils';
+import { SyntaxRules } from '../syntax/syntax-rules';
+import { TemplateProxy } from './template-proxy';
+import { Dom } from './dom';
 
 @Injectable()
 export class DomScanner {
@@ -15,10 +15,11 @@ export class DomScanner {
       return;
     }
 
-    if (isTemplateNode(element)) {
-      const container = ((element as any).container = new TemplateProxy());
-      changeDetector = changeDetector.fork(container);
-      changeDetector.afterCheck((changes: Changes) => changes.size && container.onChanges(changes));
+    if (Dom.isTemplateNode(element)) {
+      const proxy = new TemplateProxy();
+      changeDetector = changeDetector.fork(proxy);
+      changeDetector.afterCheck((changes: Changes) => changes.size && proxy.onChanges(changes));
+      (element as any).proxy = proxy;
     }
 
     element
@@ -42,7 +43,7 @@ export class DomScanner {
     const isNotElementOrDocument =
       nodeType !== elementOrShadowRoot.ELEMENT_NODE && nodeType !== elementOrShadowRoot.DOCUMENT_FRAGMENT_NODE;
     const isShadowRoot = (elementOrShadowRoot as HTMLElement).getAttributeNames === undefined;
-    const isInsideTemplate = isTemplateNode(elementOrShadowRoot.parentNode);
+    const isInsideTemplate = Dom.isTemplateNode(elementOrShadowRoot.parentNode);
 
     if (isNotElementOrDocument || isShadowRoot || isInsideTemplate) {
       return;

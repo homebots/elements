@@ -1,8 +1,7 @@
 import { ChangeDetector, Changes } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
-import { Input } from '../component-decorators';
 import { Inject } from '@homebots/injector';
-import { DomScanner } from '../dom-scanner';
+import { DomScanner } from '../dom/dom-scanner';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
@@ -12,9 +11,9 @@ interface ContainerChild {
 }
 
 export class ForContainer {
-  @Input() of: Iterable<any>;
-  @Input() for: string;
   @Inject() dom: DomScanner;
+  of: Iterable<any>;
+  for: string;
 
   private children: ContainerChild[] = [];
 
