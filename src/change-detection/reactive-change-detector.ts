@@ -9,7 +9,7 @@ let uid = 0;
 export class ReactiveChangeDetector implements ChangeDetector {
   readonly id = `@${++uid}`;
   protected children = new Map<HTMLElement, ReactiveChangeDetector>();
-  protected readonly root: ChangeDetector = this;
+  protected readonly root: ReactiveChangeDetector = this;
 
   private timer = 0;
   protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
@@ -63,14 +63,17 @@ export class ReactiveChangeDetector implements ChangeDetector {
   markTreeForCheck() {
     this.state = 'dirty';
     this.children.forEach((child) => child.markTreeForCheck());
+
+    let cd: ReactiveChangeDetector = this;
+
+    while ((cd = cd.parent)) {
+      cd.state = 'dirty';
+    }
   }
 
   markAsDirtyAndCheck() {
     this.markTreeForCheck();
-
-    if (!this.timer) {
-      this.scheduleTreeCheck();
-    }
+    this.scheduleTreeCheck();
   }
 
   check() {
@@ -81,16 +84,9 @@ export class ReactiveChangeDetector implements ChangeDetector {
     const inputChanges = new Changes();
 
     this._beforeCheck.forEach((fn) => fn());
-
     this.state = 'checking';
     this.watchers.forEach((watcher) => this.checkWatcher(inputChanges, watcher));
-
     this._afterCheck.forEach((fn) => fn(inputChanges));
-
-    if (this.state !== 'checking') {
-      this.scheduleTreeCheck();
-      return;
-    }
 
     this.state = 'checked';
   }
@@ -136,12 +132,17 @@ export class ReactiveChangeDetector implements ChangeDetector {
   }
 
   scheduleTreeCheck() {
+    if (this.root !== this) {
+      this.root.scheduleTreeCheck();
+      return;
+    }
+
     if (this.timer) {
       clearTimeout(this.timer);
     }
 
     this.timer = setTimeoutNative(() => {
-      this.root.checkTree();
+      this.checkTree();
       this.timer = 0;
     }, 1);
   }
