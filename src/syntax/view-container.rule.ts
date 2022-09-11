@@ -1,6 +1,6 @@
 /// <reference types="reflect-metadata" />
 
-import { Inject, Injectable } from '@homebots/injector';
+import { Inject, Injectable, Injector } from '@homebots/injector';
 import { ChangeDetector, Changes, OnChanges } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
@@ -76,7 +76,9 @@ export class ViewContainerRule implements SyntaxRule {
   ) {
     if (this.containerRegistry.has(containerName)) {
       const Class = this.containerRegistry.get(containerName);
-      return new Class(template, changeDetector, executionContext) as HTMLElement;
+      const container = new Class(template, changeDetector, executionContext) as HTMLElement;
+      Injector.setInjectorOf(container, Injector.getInjectorOf(this));
+      return container;
     }
   }
 }

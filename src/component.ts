@@ -4,14 +4,7 @@ import { ReactiveChangeDetector } from './change-detection/reactive-change-detec
 import { ExecutionContext } from './execution-context';
 import { createTemplateFromHtml, noop } from './utils';
 import { DomScanner } from './dom-scanner';
-import {
-  getInjectorOf,
-  setInjectorOf,
-  InjectionToken,
-  TreeInjector as Injector,
-  Provider,
-  Value,
-} from '@homebots/injector';
+import { InjectionToken, TreeInjector as Injector, Provider, Value } from '@homebots/injector';
 import { ShadowDomToggle } from './settings';
 
 export interface ShadowRootInit {
@@ -98,7 +91,7 @@ export class CustomElement {
 
       disconnectedCallback() {
         this.onDestroy();
-        getInjectorOf(this).get(ChangeDetectorRef).unregister();
+        Injector.getInjectorOf(this).get(ChangeDetectorRef).unregister();
 
         Object.values(this).filter((k) => k && typeof k === 'object' && k instanceof Subscription && k.unsubscribe());
       }
@@ -121,7 +114,7 @@ export class CustomElement {
     let parentComponent: any = component;
 
     while (parentComponent && (parentComponent = parentComponent.parentNode || parentComponent.host)) {
-      if (getInjectorOf(parentComponent)) {
+      if (Injector.getInjectorOf(parentComponent)) {
         return parentComponent;
       }
     }
@@ -130,8 +123,9 @@ export class CustomElement {
   }
 
   static createComponentInjector(component: CustomHTMLElement, options: ComponentOptions) {
-    const parentInjector = options.parentInjector || getInjectorOf(component.parentComponent);
-    const injector = new Injector(parentInjector || Injector.global);
+    const parentInjector =
+      options.parentInjector || Injector.getInjectorOf(component.parentComponent) || Injector.global;
+    const injector = new Injector(parentInjector);
 
     injector.provideAll(options.providers || []);
 
@@ -142,13 +136,13 @@ export class CustomElement {
       injector.provide(ChangeDetectorRef, Value(localChangeDetector));
     }
 
-    setInjectorOf(component, injector);
+    Injector.setInjectorOf(component, injector);
 
     return injector;
   }
 
   static setupChangeDetector(component: CustomHTMLElement) {
-    const injector = getInjectorOf(component);
+    const injector = Injector.getInjectorOf(component);
     const changeDetector = injector.get(ChangeDetectorRef);
     const executionContext = new ExecutionContext(component);
     const dom = injector.get(DomScanner);
@@ -174,7 +168,7 @@ export class CustomElement {
 
     const templateRef = createTemplateFromHtml(templateText);
     const content = templateRef.content.cloneNode(true);
-    getInjectorOf(component).provide(TemplateRef, Value(templateRef));
+    Injector.getInjectorOf(component).provide(TemplateRef, Value(templateRef));
 
     if (useShadowDom) {
       const shadowDomOptions = (options.shadowDom !== true && options.shadowDom) || { mode: 'open' };
