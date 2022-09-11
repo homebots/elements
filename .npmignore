@@ -1,7 +1,7 @@
 example
 .github
 src/
-test/
+coverage/
 rollup.config.js
 tsconfig*
 .gitpod*
