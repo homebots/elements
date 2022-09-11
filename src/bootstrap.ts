@@ -38,13 +38,13 @@ export class Bootstrap {
       ...options,
     };
 
-    const { rootNode, providers } = options;
+    const { rootNode = document.body, providers } = options;
     const changeDetectorProvided = providers.find((p) => typeof p !== 'function' && p.type === ChangeDetectorRef);
     if (!changeDetectorProvided) {
       providers.push(defaultChangeDetector);
     }
 
-    const application = new Application(rootNode || document.body, providers);
+    const application = new Application(rootNode, providers);
     Bootstrap.whenReady(() => application.check());
 
     return application;

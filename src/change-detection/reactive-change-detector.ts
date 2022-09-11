@@ -9,6 +9,7 @@ let uid = 0;
 export class ReactiveChangeDetector implements ChangeDetector {
   readonly id = `@${++uid}`;
   protected children = new Map<HTMLElement, ReactiveChangeDetector>();
+  protected readonly root: ChangeDetector = this;
 
   private timer = 0;
   protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
@@ -19,6 +20,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
   constructor(protected target: CustomHTMLElement = null, public parent: ReactiveChangeDetector = null) {
     if (this.parent) {
       this.parent.children.set(this.target, this);
+      this.root = this.parent.root;
     }
   }
 
@@ -139,7 +141,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
     }
 
     this.timer = setTimeoutNative(() => {
-      this.checkTree();
+      this.root.checkTree();
       this.timer = 0;
     }, 1);
   }

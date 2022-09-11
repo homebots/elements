@@ -9,6 +9,7 @@ export class Application {
 
   constructor(rootNode: HTMLElement, providers: Provider[]) {
     this.setupInjector(rootNode, providers);
+    (rootNode as any).application = this;
   }
 
   protected setupInjector(rootNode: HTMLElement, providers: Provider<unknown>[]) {
