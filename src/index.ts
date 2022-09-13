@@ -38,4 +38,3 @@ export { InputOptions } from './inputs';
 export { noop, domReady } from './utils';
 export { ShadowDomToggle } from './settings';
 export { Dom } from './dom/dom';
-export * from '@homebots/injector';
