@@ -43,6 +43,7 @@ export const TemplateRef = new InjectionToken<HTMLTemplateElement>('TemplateRef'
 
 export interface CustomHTMLElement extends HTMLElement {
   readonly parentComponent: CustomHTMLElement;
+  isAttachingNodes: boolean;
 
   onInit: LifecycleHook;
   onDestroy: LifecycleHook;
@@ -61,6 +62,7 @@ export class CustomElement {
   static create(ComponentClass: typeof HTMLElement, options: ComponentOptions) {
     const customElement = class extends ComponentClass implements CustomHTMLElement {
       parentComponent: CustomHTMLElement;
+      isAttachingNodes = false;
 
       onInit: LifecycleHook;
       onDestroy: LifecycleHook;
@@ -73,9 +75,9 @@ export class CustomElement {
         }
 
         const parentComponent = CustomElement.findParentComponent(this);
-        const isAlreadyAttached = parentComponent === this.parentComponent;
+        const skipCreation = parentComponent === this.parentComponent || parentComponent.isAttachingNodes;
 
-        if (isAlreadyAttached) {
+        if (skipCreation) {
           return;
         }
 
@@ -196,7 +198,9 @@ export class CustomElement {
       const currentContentNodes = Array.from(component.children);
       component.append(templateContent);
       const slot = component.querySelector('slot');
+      component.isAttachingNodes = true;
       currentContentNodes.forEach((node) => slot.append(node));
+      component.isAttachingNodes = false;
       return;
     }
 
