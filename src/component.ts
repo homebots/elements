@@ -99,6 +99,10 @@ export class CustomElement {
       }
 
       disconnectedCallback() {
+        if (this.isConnected) {
+          return;
+        }
+
         this.onDestroy();
         Injector.getInjectorOf(this).get(ChangeDetectorRef).unregister();
 
