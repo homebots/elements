@@ -195,16 +195,16 @@ export class CustomElement {
     const hasSlot = Boolean(templateRef.content.querySelector('slot'));
 
     if (hasSlot) {
-      const currentContentNodes = Array.from(component.children);
-      component.append(templateContent);
-      const slot = component.querySelector('slot');
-      component.isAttachingNodes = true;
-      currentContentNodes.forEach((node) => slot.append(node));
-      component.isAttachingNodes = false;
+      component.appendChild(templateContent);
       return;
     }
 
-    component.appendChild(templateContent);
+    const currentContentNodes = Array.from(component.children);
+    component.append(templateContent);
+    const slot = component.querySelector('slot');
+    component.isAttachingNodes = true;
+    currentContentNodes.forEach((node) => slot.append(node));
+    delete component.isAttachingNodes;
   }
 
   static copyHostAttributes(component: CustomHTMLElement, options: ComponentOptions) {

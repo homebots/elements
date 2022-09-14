@@ -14,9 +14,9 @@ describe('template containers (if/for)', () => {
       </ul>`;
 
     const rootNode = createAndInjectHtml(template);
-    const app = Bootstrap.createApplication({ rootNode });
-
     rootNode.items = [1, 2, 3];
+
+    const app = Bootstrap.createApplication({ rootNode });
     app.check();
     await wait();
 

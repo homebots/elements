@@ -7,7 +7,7 @@
   "scripts": {
     "clean": "rm -rf dist/",
     "test": "karma start --single-run",
-    "tdd": "while (true) do karma start --auto-watch --reporters dots; sleep 3; done",
+    "tdd": "while (true) do karma start --auto-watch --reporters dots; sleep 5; done",
     "build": "npm run clean && tsc --project ./tsconfig.json && npm run rollup",
     "watch": "nodemon -e ts,json,js -w src -x npm run build",
     "rollup": "./node_modules/.bin/rollup -c rollup.config.js"
