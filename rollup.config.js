@@ -4,7 +4,7 @@ import resolve from '@rollup/plugin-node-resolve';
 
 export default {
   input: 'src/index.ts',
-  external: ['@homebots/injector'],
+  external: ['@homebots/injector', 'rxjs'],
   output: {
     dir: '.',
     format: 'es',

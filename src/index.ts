@@ -25,7 +25,6 @@ export {
   OnBeforeCheck,
   OnDestroy,
   OnInit,
-  ShadowRootInit,
   TemplateRef,
   CustomElement,
 } from './component';

@@ -8,10 +8,7 @@ import { InjectionToken, TreeInjector as Injector, Provider, Value } from '@home
 import { ShadowDomToggle } from './settings';
 import { Dom } from './dom/dom';
 
-export interface ShadowRootInit {
-  mode: 'open' | 'closed';
-  delegateFocus: boolean;
-}
+const defaultShadowDomOptions: ShadowRootInit = { mode: 'open' };
 
 export interface HostAttributes {
   [attribute: string]: string;
@@ -71,7 +68,18 @@ export class CustomElement {
       onChanges: ChangesCallback;
 
       connectedCallback() {
-        this.parentComponent = CustomElement.findParentComponent(this);
+        if (!this.isConnected) {
+          return;
+        }
+
+        const parentComponent = CustomElement.findParentComponent(this);
+        const isAlreadyAttached = parentComponent === this.parentComponent;
+
+        if (isAlreadyAttached) {
+          return;
+        }
+
+        this.parentComponent = parentComponent;
 
         try {
           const injector = CustomElement.createComponentInjector(this, options);
@@ -168,27 +176,27 @@ export class CustomElement {
     }
 
     const templateRef = Dom.createTemplateFromHtml(templateText);
-    const content = templateRef.content.cloneNode(true);
+    const templateContent = templateRef.content.cloneNode(true);
     Injector.getInjectorOf(component).provide(TemplateRef, Value(templateRef));
 
     if (useShadowDom) {
-      const shadowDomOptions = (options.shadowDom !== true && options.shadowDom) || { mode: 'open' };
+      const shadowDomOptions = (options.shadowDom !== true && options.shadowDom) || defaultShadowDomOptions;
       const shadowRoot = component.attachShadow(shadowDomOptions);
-      shadowRoot.appendChild(content);
+      shadowRoot.appendChild(templateContent);
       return;
     }
 
-    const hasSlot = templateText.indexOf('<slot') !== -1;
+    const hasSlot = Boolean(templateRef.content.querySelector('slot'));
 
     if (hasSlot) {
-      const currentContent = document.createDocumentFragment();
-      component.childNodes.forEach((node) => currentContent.appendChild(node));
-      component.appendChild(content);
-      (component.querySelector('slot') || component).appendChild(currentContent);
+      const currentContentNodes = Array.from(component.children);
+      component.append(templateContent);
+      const slot = component.querySelector('slot');
+      currentContentNodes.forEach((node) => slot.append(node));
       return;
     }
 
-    component.appendChild(content);
+    component.appendChild(templateContent);
   }
 
   static copyHostAttributes(component: CustomHTMLElement, options: ComponentOptions) {
