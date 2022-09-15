@@ -31,9 +31,17 @@ export {
 
 export { ContainerRegistry } from './containers/registry';
 export { DomScanner } from './dom/dom-scanner';
+export { Dom } from './dom/dom';
 export { DomEventEmitter, EventCallback, EventEmitter, dispatchDomEvent } from './events';
 export { ExecutionContext, ExecutionLocals, SealedExecutionContext, NullContext } from './execution-context';
 export { InputOptions } from './inputs';
 export { noop, domReady } from './utils';
 export { ShadowDomToggle } from './settings';
-export { Dom } from './dom/dom';
+
+export { SyntaxRules } from './syntax/syntax-rules';
+export { AddEventListenerRule } from './syntax/add-event-listener.rule';
+export { NodeReferenceRule } from './syntax/node-reference.rule';
+export { SetAttributeRule } from './syntax/set-attribute.rule';
+export { SetClassRule } from './syntax/set-class.rule';
+export { SetPropertyRule } from './syntax/set-property.rule';
+export { ViewContainerRule } from './syntax/view-container.rule';

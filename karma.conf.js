@@ -7,7 +7,7 @@ module.exports = function (config) {
     preprocessors: {
       'src/**/*.ts': ['karma-typescript'],
     },
-    restartOnFileChange: true,
+    restartOnFileChange: false,
     reporters: ['progress', 'karma-typescript'],
     browsers: ['ChromeHeadless'],
     karmaTypescriptConfig: {

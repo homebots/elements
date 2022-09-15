@@ -1,5 +1,6 @@
 /// <reference types="zone.js/dist/zone.js" />
 
+import { Injectable } from '@homebots/injector';
 import { CustomHTMLElement } from '../component';
 import { ChangeDetector } from './change-detection';
 import { ReactiveChangeDetector } from './reactive-change-detector';
@@ -8,6 +9,7 @@ interface ZoneProperties {
   changeDetector: ChangeDetector;
 }
 
+@Injectable()
 export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSpec, ChangeDetector {
   get name() {
     return this.id;

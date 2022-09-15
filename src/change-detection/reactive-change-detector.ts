@@ -3,9 +3,11 @@ import { default as isEqual } from 'lodash.isequal';
 import { AnyFunction, setTimeoutNative } from '../utils';
 import { CustomHTMLElement } from '../component';
 import { ChangeCallback, ChangeDetector, Changes, Expression, Watcher } from './change-detection';
+import { Injectable } from '@homebots/injector';
 
 let uid = 0;
 
+@Injectable()
 export class ReactiveChangeDetector implements ChangeDetector {
   readonly id = `@${++uid}`;
   protected children = new Map<HTMLElement, ReactiveChangeDetector>();

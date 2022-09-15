@@ -1,11 +1,11 @@
 import { Bootstrap } from '../';
-import { clearDom, createAndInjectHtml, wait } from './helpers';
+import { clearDom, createAndInjectHtml, wait } from '@homebots/elements/testing';
 
 describe('template containers (if/for)', () => {
   afterEach(() => clearDom());
 
   it('should repeat correctly the items in a template', async () => {
-    const template = `<p>{{ greeting  }}</p>`;
+    const template = `<p>Say {{ this.greeting  }}</p>`;
     const rootNode = createAndInjectHtml(template);
     rootNode.greeting = 'hello';
 
@@ -13,12 +13,12 @@ describe('template containers (if/for)', () => {
     app.check();
     await wait();
 
-    expect(rootNode.innerText.trim()).toContain('hello');
+    expect(rootNode.innerText.trim()).toBe('Say hello');
 
     rootNode.greeting = 'goodbye';
     app.check();
     await wait();
 
-    expect(rootNode.innerText.trim()).toContain('goodbye');
+    expect(rootNode.innerText.trim()).toBe('Say goodbye');
   });
 });

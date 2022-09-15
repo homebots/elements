@@ -9,7 +9,7 @@ const expressionCache = new Map<string, Fn>();
 export class ExecutionContext {
   locals: ExecutionLocals;
 
-  constructor(private thisValue: object | null, private parent?: ExecutionContext) {}
+  constructor(private thisValue: object | null = null, private parent?: ExecutionContext) {}
 
   addLocals(locals: ExecutionLocals) {
     Object.assign(this.locals || (this.locals = {}), locals);

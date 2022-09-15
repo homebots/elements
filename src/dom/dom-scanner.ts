@@ -2,24 +2,29 @@ import { ChangeDetector, Changes } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
-import { HTMLTemplateElementProxy, TemplateProxy } from './template-proxy';
 import { Dom } from './dom';
 
 @Injectable()
 export class DomScanner {
   @Inject() private syntaxRules: SyntaxRules;
 
-  scanElement(element: Node, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
-    if (Dom.isTextNode(element)) {
-      const { textContent } = element;
-
-      const nodes = Dom.createTextPlaceholders(textContent);
-      element.replaceWith(nodes);
+  scanTextNode(node: Text, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
+    if (node.textContent.indexOf('{{') === -1) {
       return;
     }
 
-    // const isNotElementOrDocument =
-    //   !Dom.isElementNode(element) && !Dom.isDocumentFragment(element);
+    const expression = Dom.createTextPlaceholders(node.textContent);
+    changeDetector.watch({
+      expression: () => executionContext.run(expression),
+      callback: (value: string) => (node.textContent = value),
+    });
+  }
+
+  scanElement(element: Node, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
+    if (Dom.isTextNode(element)) {
+      this.scanTextNode(element, changeDetector, executionContext);
+      return;
+    }
 
     if (!Dom.isElementNode(element)) {
       return;
@@ -27,16 +32,16 @@ export class DomScanner {
 
     const isShadowRoot = (element as HTMLElement).getAttributeNames === undefined;
     const isInsideTemplate = Dom.isTemplateNode(element.parentNode);
+    const isSlotInComponentWithoutShadowDom = element.nodeName === 'SLOT';
 
-    if (isShadowRoot || isInsideTemplate) {
+    if (isShadowRoot || isInsideTemplate || isSlotInComponentWithoutShadowDom) {
       return;
     }
 
     if (Dom.isTemplateNode(element)) {
-      const proxy = new TemplateProxy();
+      const proxy = Dom.attachProxy(element);
       changeDetector = changeDetector.fork(proxy);
       changeDetector.afterCheck((changes: Changes) => changes.size && proxy.onChanges(changes));
-      (element as HTMLTemplateElementProxy).proxy = proxy;
     }
 
     this.scanAttributes(element, changeDetector, executionContext);

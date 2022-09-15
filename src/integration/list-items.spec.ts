@@ -1,5 +1,5 @@
 import { Bootstrap } from '../';
-import { clearDom, createAndInjectHtml, wait } from './helpers';
+import { clearDom, createAndInjectHtml, wait } from '@homebots/elements/testing';
 
 describe('template containers (if/for)', () => {
   afterEach(() => clearDom());
