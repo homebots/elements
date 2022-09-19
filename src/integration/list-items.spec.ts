@@ -1,5 +1,5 @@
 import { Bootstrap } from '../';
-import { clearDom, createAndInjectHtml, wait } from '@homebots/elements/testing';
+import { clearDom, createHtml, wait } from '@homebots/elements/testing';
 
 describe('template containers (if/for)', () => {
   afterEach(() => clearDom());
@@ -13,10 +13,10 @@ describe('template containers (if/for)', () => {
         </template>
       </ul>`;
 
-    const rootNode = createAndInjectHtml(template);
+    const rootNode = createHtml(template);
     rootNode.items = [1, 2, 3];
 
-    const app = Bootstrap.createApplication({ rootNode });
+    const app = Bootstrap.createApplication(rootNode);
     app.check();
     await wait();
 
@@ -33,14 +33,14 @@ describe('template containers (if/for)', () => {
 
   it('should add/remove an item from DOM based on a condition', async () => {
     const condition = { value: false };
-    const rootNode = createAndInjectHtml(
+    const rootNode = createHtml(
       `<template *if="this.condition.value" [else]="ola">
         <p>Hello!</p>
       </template>
       <template #ola><div>Ola!</div></div>`,
     );
 
-    const app = Bootstrap.createApplication({ rootNode });
+    const app = Bootstrap.createApplication(rootNode);
     rootNode.condition = condition;
     app.check();
     await wait();
@@ -55,9 +55,9 @@ describe('template containers (if/for)', () => {
   });
 
   it('should toggle a css class based on a condition', async () => {
-    const rootNode = createAndInjectHtml(`<span [class.label]="this.isLabel">I'm a label!<span>`);
+    const rootNode = createHtml(`<span [class.label]="this.isLabel">I'm a label!<span>`);
 
-    const app = Bootstrap.createApplication({ rootNode });
+    const app = Bootstrap.createApplication(rootNode);
     const span = rootNode.querySelector('span');
 
     rootNode.isLabel = false;

@@ -2,38 +2,61 @@
 
 This is a microframework that tries to use the latest API's from HTML, Javascript and CSS to run web apps.
 
-What you get out-of-box:
+Using [Custom elements](https://developers.google.com/web/fundamentals/web-components/customelements) and a few other
+features, like [dependency injection](https://github.com/homebots/injector), change detection and lifecycle hooks.
 
-- Dependency injection
-- [Custom elements](https://developers.google.com/web/fundamentals/web-components/customelements)
-- Lifecycle hooks (onChange, OnInit, OnDestroy, OnBeforeCheck)
-- Change detection (via [Zone.js](https://www.npmjs.com/package/zone.js))
+## Lifecycle hooks
 
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/homebots/elements)
+Every custome element can implement one of the following hooks: `onChanges`, `OnInit`, `OnDestroy`, `OnBeforeCheck`
 
-## How to Use
+## Change detection
 
-First create some components:
+Every instance has its own change detection context, but when a component changes something, the
+change detection looks at all observed properties in that context and all children, starting from the root element.
+
+This is to ensure that changes that affect the parent elements can also be checked.
+
+> As an alternative, change detection (via [Zone.js](https://www.npmjs.com/package/zone.js)) can be used as well.
+
+## Examples
+
+A minimalistic todo app:
 
 ```typescript
-// src/app/app.component.ts
-import { Component } from "@homebots/elements";
+// app.component.ts
+import { Component } from '@homebots/elements';
 
 @Component({
-  tag: "my-app",
-  template: "<h1>Hello!</h1>",
+  tag: 'todo-app',
+  template: `
+    <form (submit.stop)="this.addTask(newtask.value); newtask.value = ''">
+      <input #newtask />
+      <button type="submit">add</button>
+    </form>
+    <ul>
+      <template *for="'task'" [of]="this.tasks">
+        <li><input type="checkbox" (change.stop)="task.done = !task.done" [value]="task.done" /> {{ task.title }}</li>
+      </template>
+    </ul>
+  `,
 })
-export class AppComponent extends HTMLElement {}
+export class TodoApp extends HTMLElement {
+  tasks = [];
+
+  addTask(title: string) {
+    return this.tasks.push({ done: false, title });
+  }
+}
 ```
 
 Then bootstrap the application:
 
 ```typescript
-//  src/index.ts
-import { bootstrap } from "@homebots/elements";
-export { AppComponent } from "./app/app.component.ts";
+// index.ts
+import { Bootstrap } from '@homebots/elements';
+import './app.component.ts';
 
-bootstrap();
+Bootstrap.createApplication();
 ```
 
 Then finally put all together:
@@ -42,31 +65,20 @@ Then finally put all together:
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My App</title>
-    <script src="https://unpkg.com/zone.js"></script>
+    <title>Todo</title>
     <script src="https://unpkg.com/reflect-metadata"></script>
-    <script src="./index.ts"></script>
+    <script type="module" src="./index.ts"></script>
   </head>
 
   <body>
-    <my-app></my-app>
+    <todo-app></todo-app>
   </body>
 </html>
 ```
 
-## Build
-
-I tried [Parcel](https://parceljs.org) to bundle the example and it's dead easy to start an app. Really cool stuff!
-So I recommend it for a quick start:
-
-```bash
-$ npm install -g parcel-bundler
-$ parcel src/index.html
-```
-
-## Syntax Examples
+## Syntax
 
 Most of the syntax is shamelessly copied from Angular and Alpine.js:
 
@@ -85,20 +97,21 @@ Most of the syntax is shamelessly copied from Angular and Alpine.js:
 <button (click)="name.focus()">click me</button>
 
 <!-- conditional nodes -->
-
 <template *if="this.showName" [else]="noname">Hello, John!</template>
 <template #noname>Who are you?</template>
 
-<!-- loops nodes -->
+<!-- loops -->
 <ul>
   <template *for="'name'" [of]="this.listOfNames">
-    <li [innerText]="name"></li>
+    <li>{{name}}</li>
   </template>
 </ul>
 
 <!-- conditional classes -->
 <p [class.highlight]="this.isTextHighlighted">Lorem ipsum</p>
 ```
+
+## Dependency Injection
 
 ```typescript
 // injectable class
@@ -117,34 +130,8 @@ export class AppService {
 
 ## Dependencies
 
-You will need to import [Zone.js](https://www.npmjs.com/package/zone.js) and [Reflect API](https://www.npmjs.com/package/reflect-metadata) in your project.
-
-Unpkg makes life so easy these days, amirite?
-Just add these:
+The [Reflect API](https://www.npmjs.com/package/reflect-metadata) for Typescript metadata.
 
 ```html
-<script src="https://unpkg.com/zone.js"></script>
 <script src="https://unpkg.com/reflect-metadata"></script>
 ```
-
-Here's a To-do list using Elements https://github.com/homebots/elements-example/tree/todo-app
-
-# TODO
-
-Lots of things can be improved here.
-To name a few:
-
-```
-- Improve performance of conditionals and loops
-- Add some error handling for easy debugging
-- Add tests
-```
-
-I put this together in a few days as a braindump so there's no test coverage yet. Sorry :(
-
-I think this is not the most performant thing on Earth too, but I'm not trying to beat React or Angular.
-
-The goal of this project is to provide a no-brainer jump start solution to create small apps and experiments.
-The code will run on Chrome, Firefox or any recent/decent browser.
-
-I don't expect to ever fully support IE, but some polyfills could make it work.

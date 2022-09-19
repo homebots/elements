@@ -75,7 +75,7 @@ export class CustomElement {
         }
 
         const parentComponent = CustomElement.findParentComponent(this);
-        const skipCreation = parentComponent === this.parentComponent || parentComponent.isAttachingNodes;
+        const skipCreation = parentComponent === this.parentComponent || parentComponent?.isAttachingNodes;
 
         if (skipCreation) {
           return;

@@ -1,5 +1,5 @@
 {
-  "compileOnSave": false,
+  "compileOnSave": true,
   "compilerOptions": {
     "moduleResolution": "node",
     "target": "ESNext",
@@ -11,9 +11,9 @@
     "typeRoots": ["./node_modules/@types"],
     "outDir": "./dist",
     "declaration": true,
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@homebots/elements/testing": ["testing/index.ts"]
+      "@homebots/elements/testing": ["./src/testing/index.ts"]
     }
   },
   "files": ["src/index.ts"],

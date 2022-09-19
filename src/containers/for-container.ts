@@ -2,6 +2,7 @@ import { ChangeDetector, Changes } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Inject } from '@homebots/injector';
 import { DomScanner } from '../dom/dom-scanner';
+import { setTimeoutNative } from '../utils';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
@@ -18,7 +19,7 @@ export class ForContainer {
   private children: ContainerChild[] = [];
 
   constructor(
-    private template: HTMLTemplateElement,
+    private template: HTMLTemplateElement & { anchor?: Comment },
     private changeDetector: ChangeDetector,
     private executionContext: ExecutionContext,
   ) {}
@@ -50,7 +51,7 @@ export class ForContainer {
     this.prepareLocalsAndChildren(items, fragment);
     this.changeDetector.markAsDirtyAndCheck();
 
-    requestAnimationFrame(() => this.template.parentNode.appendChild(fragment));
+    setTimeoutNative(() => this.template.anchor.parentNode.appendChild(fragment));
   }
 
   private prepareLocalsAndChildren(items: any[], fragment) {

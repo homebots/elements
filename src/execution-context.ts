@@ -4,7 +4,13 @@ export interface ExecutionLocals {
   [local: string]: any;
 }
 
+export interface RunOptions {
+  noReturn: boolean;
+  async: boolean;
+}
+
 const expressionCache = new Map<string, Fn>();
+// const AsyncFunction = (async function () {}).constructor;
 
 export class ExecutionContext {
   locals: ExecutionLocals;
@@ -23,8 +29,8 @@ export class ExecutionContext {
     return new ExecutionContext(newContext || this.thisValue, this);
   }
 
-  run(expression: string, localValues?: ExecutionLocals) {
-    const fn = this.compile(expression, localValues);
+  run(expression: string, localValues?: ExecutionLocals, options?: RunOptions) {
+    const fn = this.compile(expression, localValues, options);
     try {
       return fn();
     } catch (e) {
@@ -33,13 +39,13 @@ export class ExecutionContext {
     }
   }
 
-  compile(expression: string, localValues?: ExecutionLocals) {
+  compile(expression: string, localValues?: ExecutionLocals, options?: RunOptions) {
     const locals = this.getLocals(localValues);
     const localsByName = Object.keys(locals);
     const cacheKey = expression + localsByName;
 
     if (!expressionCache.has(cacheKey)) {
-      expressionCache.set(cacheKey, Function(...localsByName, `return ${expression}`));
+      expressionCache.set(cacheKey, Function(...localsByName, `${options?.noReturn ? '' : 'return'} ${expression}`));
     }
 
     const localsAsArray = localsByName.map((key) => locals[key]);

@@ -2,7 +2,7 @@ import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { setTimeoutNative } from '../utils';
 import { Inject } from '@homebots/injector';
-import { DomScanner } from '../dom/dom-scanner';
+import { DomScanner, HTMLAnchoredTemplateElement } from '../dom/dom-scanner';
 
 const IF = 0;
 const ELSE = 1;
@@ -11,10 +11,10 @@ const NONE = 2;
 export class IfContainer {
   @Inject() dom: DomScanner;
   if: boolean;
-  else: HTMLTemplateElement;
+  else: HTMLAnchoredTemplateElement;
 
   constructor(
-    private template: HTMLTemplateElement,
+    private template: HTMLAnchoredTemplateElement,
     private changeDetector: ChangeDetector,
     private executionContext: ExecutionContext,
   ) {}
@@ -41,7 +41,7 @@ export class IfContainer {
     }
   }
 
-  private createNodes(template: HTMLTemplateElement) {
+  private createNodes(template: HTMLAnchoredTemplateElement) {
     const templateNodes = Array.from(template.content.childNodes);
     const fragment = document.createDocumentFragment();
     const nodes = templateNodes.map((n) => n.cloneNode(true));
@@ -53,7 +53,7 @@ export class IfContainer {
     this.changeDetector.markAsDirtyAndCheck();
 
     setTimeoutNative(() => {
-      template.parentNode.insertBefore(fragment, this.template);
+      template.anchor.parentNode.insertBefore(fragment, this.template.anchor);
       this.removeOldNodes();
       this.nodes = nodes;
     }, 2);

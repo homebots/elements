@@ -7,12 +7,20 @@ export function html(text: string) {
 
 const nodesToCleanUp: HTMLElement[] = [];
 
-export function createAndInjectHtml(htmlString: string) {
-  const div = html(htmlString)
+export function createHtml(htmlString: string) {
+  const div = html(htmlString);
   document.body.appendChild(div);
   nodesToCleanUp.push(div);
 
   return div as HTMLDivElement & { [k: string]: any };
+}
+
+export function createElement(tag: string) {
+  const element = document.createElement(tag);
+  document.body.appendChild(element);
+  nodesToCleanUp.push(element);
+
+  return element as HTMLDivElement & { [k: string]: any };
 }
 
 export function clearDom() {

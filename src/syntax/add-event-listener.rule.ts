@@ -18,7 +18,7 @@ export class AddEventListenerRule implements SyntaxRule {
   ) {
     const [eventName, ...suffixes] = eventNameAndSuffix.split('.');
     const capture = eventName === 'focus' || eventName === 'blur';
-    const eventHandler = ($event: Event) => executionContext.run(expression, { $event });
+    const eventHandler = ($event: Event) => executionContext.run(expression, { $event }, { noReturn: true });
     const callback = (event: Event) => {
       if (suffixes.includes('once')) {
         element.removeEventListener(eventName, callback, { capture });

@@ -4,6 +4,8 @@ import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
 import { Dom } from './dom';
 
+export type HTMLAnchoredTemplateElement = HTMLTemplateElement & { anchor: Comment };
+
 @Injectable()
 export class DomScanner {
   @Inject() private syntaxRules: SyntaxRules;
@@ -42,6 +44,10 @@ export class DomScanner {
       const proxy = Dom.attachProxy(element);
       changeDetector = changeDetector.fork(proxy);
       changeDetector.afterCheck((changes: Changes) => changes.size && proxy.onChanges(changes));
+      const anchor = document.createComment('');
+      (element as HTMLAnchoredTemplateElement).anchor = anchor;
+      element.parentNode.insertBefore(anchor, element);
+      element.remove();
     }
 
     this.scanAttributes(element, changeDetector, executionContext);

@@ -13,16 +13,14 @@ import { SetClassRule } from './syntax/set-class.rule';
 import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
 import { ViewContainerRule } from './syntax/view-container.rule';
-import { ShadowDomToggle } from 'settings';
+import { ShadowDomToggle } from './settings';
 
 const defaultChangeDetector = { type: ChangeDetectorRef, use: ReactiveChangeDetector };
 const defaultOptions = {
-  rootNode: document.body,
   providers: [defaultChangeDetector],
 };
 
 export interface BootstrapOptions {
-  rootNode?: HTMLElement;
   providers?: Provider[];
   useShadowDom?: boolean;
 }
@@ -34,13 +32,13 @@ export class Bootstrap {
     return (this.promise = this.promise.then(fn));
   }
 
-  static createApplication(options?: BootstrapOptions) {
+  static createApplication(rootNode: HTMLElement = document.body, options?: BootstrapOptions) {
     options = {
       ...defaultOptions,
       ...options,
     };
 
-    const { rootNode = document.body, providers } = options;
+    const { providers } = options;
     const changeDetectorProvided = providers.find((p) => typeof p !== 'function' && p.type === ChangeDetectorRef);
     if (!changeDetectorProvided) {
       providers.push(defaultChangeDetector);

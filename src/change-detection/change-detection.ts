@@ -35,7 +35,7 @@ export interface ChangeDetector {
   beforeCheck(fn: AnyFunction): void;
   afterCheck(fn: AnyFunction): void;
 
-  markAsDirtyAndCheck(): void;
+  markAsDirtyAndCheck(): Promise<void>;
   markTreeForCheck(): void;
   scheduleTreeCheck(): void;
   check(): void;

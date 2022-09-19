@@ -1,5 +1,5 @@
 import { Bootstrap } from '..';
-import { clearDom, createAndInjectHtml, wait } from '@homebots/elements/testing';
+import { clearDom, createHtml, wait } from '@homebots/elements/testing';
 
 describe('native and custom events', () => {
   afterEach(() => clearDom());
@@ -8,8 +8,8 @@ describe('native and custom events', () => {
     const template = `
       <span [innerText]="this.count + ' times'"></span>
       <button (click.once)="this.count++">+</button>`;
-    const rootNode = createAndInjectHtml(template);
-    const app = Bootstrap.createApplication({ rootNode });
+    const rootNode = createHtml(template);
+    const app = Bootstrap.createApplication(rootNode);
 
     rootNode.count = 0;
     app.check();
@@ -34,8 +34,8 @@ describe('native and custom events', () => {
         <button type="submit">ok</button>
       </form>`;
 
-    const rootNode = createAndInjectHtml(template);
-    const app = Bootstrap.createApplication({ rootNode });
+    const rootNode = createHtml(template);
+    const app = Bootstrap.createApplication(rootNode);
     app.check();
     await wait();
     rootNode.querySelector('button').click();

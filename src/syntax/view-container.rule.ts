@@ -6,7 +6,7 @@ import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
 import { ContainerRegistry } from '../containers/registry';
 import { Dom } from '../dom/dom';
-import { HTMLTemplateElementProxy } from 'dom/template-proxy';
+import { HTMLTemplateElementProxy } from '../dom/template-proxy';
 
 @Injectable()
 export class ViewContainerRule implements SyntaxRule {

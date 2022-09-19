@@ -3,9 +3,10 @@ process.env.CHROME_BIN = require('puppeteer').executablePath();
 module.exports = function (config) {
   config.set({
     frameworks: ['jasmine', 'karma-typescript'],
-    files: ['./test.js', require.resolve('reflect-metadata'), './src/**/*.ts'],
+    files: ['./test.js', require.resolve('reflect-metadata'), './src/**/*.ts', './tests/**/*.ts'],
     preprocessors: {
       'src/**/*.ts': ['karma-typescript'],
+      'tests/**/*.ts': ['karma-typescript'],
     },
     restartOnFileChange: false,
     reporters: ['progress', 'karma-typescript'],
