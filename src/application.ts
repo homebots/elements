@@ -28,7 +28,7 @@ export class Application {
     injector.provide(ExecutionContext, Value(NullContext));
   }
 
-  check() {
+  async check() {
     return this.changeDetector.markAsDirtyAndCheck();
   }
 

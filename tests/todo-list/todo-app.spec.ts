@@ -1,4 +1,4 @@
-import { createElement } from '../../src/testing';
+import { createElement, wait } from '../../src/testing';
 import { Injector } from '@homebots/injector';
 import { Bootstrap, ShadowDomToggle } from '../../src/index';
 import './todo-app';
@@ -39,9 +39,9 @@ fdescribe('todo app', () => {
     interactor.addTask('Task 2');
 
     await app.check();
-    console.log(element);
-    debugger;
+    await wait(10);
 
-    expect(interactor.tasks.map((x) => x.textContent)).toEqual(['Task 1', 'Task 2']);
+    const tasks = interactor.tasks.map((task) => String(task.textContent).trim());
+    expect(tasks).toEqual(['Task 1', 'Task 2']);
   });
 });

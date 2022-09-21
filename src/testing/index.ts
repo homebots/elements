@@ -29,5 +29,5 @@ export function clearDom() {
 }
 
 export async function wait(ms: number = 10) {
-  return await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, ms)));
+  return await new Promise((resolve) => setTimeout(resolve, ms));
 }

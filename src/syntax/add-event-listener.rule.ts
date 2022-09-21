@@ -18,7 +18,8 @@ export class AddEventListenerRule implements SyntaxRule {
   ) {
     const [eventName, ...suffixes] = eventNameAndSuffix.split('.');
     const capture = eventName === 'focus' || eventName === 'blur';
-    const eventHandler = ($event: Event) => executionContext.run(expression, { $event }, { noReturn: true });
+    const eventHandler = ($event: Event) =>
+      executionContext.run(expression, { $event }, { async: false, noReturn: true });
     const callback = (event: Event) => {
       if (suffixes.includes('once')) {
         element.removeEventListener(eventName, callback, { capture });
@@ -27,6 +28,10 @@ export class AddEventListenerRule implements SyntaxRule {
       if (suffixes.includes('stop')) {
         event.preventDefault();
         event.stopPropagation();
+      }
+
+      if (suffixes.includes('prevent')) {
+        event.preventDefault();
       }
 
       eventHandler.apply(element, [event]);

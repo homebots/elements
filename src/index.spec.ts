@@ -7,8 +7,4 @@ describe('CustomElement', () => {
     expect(CustomElement.define).toBeDefined();
     expect(CustomElement.use).toBeDefined();
   });
-
-  it('should ', () => {
-    
-  });
 });
