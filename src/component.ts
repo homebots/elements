@@ -1,4 +1,3 @@
-import { Subscription } from 'rxjs';
 import { ChangeDetectorRef, Changes, ChangesCallback } from './change-detection/change-detection';
 import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { ExecutionContext } from './execution-context';
@@ -9,10 +8,7 @@ import { ShadowDomToggle } from './settings';
 import { Dom } from './dom/dom';
 
 const defaultShadowDomOptions: ShadowRootInit = { mode: 'open' };
-
-export interface HostAttributes {
-  [attribute: string]: string;
-}
+let isAttachingNodesToSlot = false;
 
 export interface ComponentOptions {
   tag: string;
@@ -20,7 +16,6 @@ export interface ComponentOptions {
   styles?: string;
   shadowDom?: boolean | ShadowRootInit;
   extensionOptions?: { extends: string };
-  hostAttributes?: HostAttributes;
   providers?: Provider[];
   parentInjector?: Injector;
 }
@@ -43,7 +38,6 @@ export const TemplateRef = new InjectionToken<HTMLTemplateElement>('TemplateRef'
 
 export interface CustomHTMLElement extends HTMLElement {
   readonly parentComponent: CustomHTMLElement;
-  isAttachingNodes: boolean;
 
   onInit: LifecycleHook;
   onDestroy: LifecycleHook;
@@ -51,9 +45,21 @@ export interface CustomHTMLElement extends HTMLElement {
   onChanges: ChangesCallback;
 }
 
+export abstract class CustomElementPlugin {
+  abstract onInit(element: CustomHTMLElement, options: ComponentOptions): void;
+  abstract onDestroy(element: CustomHTMLElement): void;
+  abstract onError(element: CustomHTMLElement, error: any): void;
+}
+
 const lifeCycleHooks = ['onInit', 'onDestroy', 'onChanges', 'onBeforeCheck'];
+const plugins: CustomElementPlugin[] = [];
 
 export class CustomElement {
+  static use(plugin: CustomElementPlugin) {
+    plugins.push(plugin);
+    return CustomElement;
+  }
+
   static define(ComponentClass: typeof HTMLElement, options: ComponentOptions) {
     const customElement = CustomElement.create(ComponentClass, options);
     customElements.define(options.tag, customElement, options.extensionOptions);
@@ -62,7 +68,6 @@ export class CustomElement {
   static create(ComponentClass: typeof HTMLElement, options: ComponentOptions) {
     const customElement = class extends ComponentClass implements CustomHTMLElement {
       parentComponent: CustomHTMLElement;
-      isAttachingNodes = false;
 
       onInit: LifecycleHook;
       onDestroy: LifecycleHook;
@@ -74,8 +79,8 @@ export class CustomElement {
           return;
         }
 
-        const parentComponent = CustomElement.findParentComponent(this);
-        const skipCreation = parentComponent === this.parentComponent || parentComponent?.isAttachingNodes;
+        const parentComponent = CustomElementInternal.findParentComponent(this);
+        const skipCreation = parentComponent === this.parentComponent || isAttachingNodesToSlot;
 
         if (skipCreation) {
           return;
@@ -84,19 +89,10 @@ export class CustomElement {
         this.parentComponent = parentComponent;
 
         try {
-          const injector = CustomElement.createComponentInjector(this, options);
-
-          if (options.shadowDom === undefined) {
-            options.shadowDom = injector.get(ShadowDomToggle).enabled;
-          }
-
-          CustomElement.insertTemplate(this, options);
-          CustomElement.copyHostAttributes(this, options);
-          CustomElement.setupChangeDetector(this);
-
+          CustomElementInternal.onInit(this, options);
           this.onInit();
         } catch (error) {
-          console.log(error);
+          CustomElementInternal.onError(this, options);
         }
       }
 
@@ -106,17 +102,17 @@ export class CustomElement {
         }
 
         this.onDestroy();
-        Injector.getInjectorOf(this).get(ChangeDetectorRef).unregister();
-
-        Object.values(this).filter((k) => k && typeof k === 'object' && k instanceof Subscription && k.unsubscribe());
+        CustomElementInternal.onDestroy(this);
       }
     };
 
-    CustomElement.addLifeCycleHooks(customElement);
+    CustomElementInternal.addLifeCycleHooks(customElement);
 
     return customElement;
   }
+}
 
+export class CustomElementInternal {
   static addLifeCycleHooks(target: any) {
     lifeCycleHooks.forEach((hook) => {
       if (!target.prototype[hook]) {
@@ -151,6 +147,10 @@ export class CustomElement {
       injector.provide(ChangeDetectorRef, Value(localChangeDetector));
     }
 
+    if (options.shadowDom === undefined) {
+      options.shadowDom = injector.get(ShadowDomToggle).enabled;
+    }
+
     Injector.setInjectorOf(component, injector);
 
     return injector;
@@ -173,7 +173,11 @@ export class CustomElement {
     changeDetector.markAsDirtyAndCheck();
   }
 
-  static insertTemplate(component: CustomHTMLElement, options: ComponentOptions) {
+  static teardownChangeDetector(component: CustomHTMLElement) {
+    Injector.getInjectorOf(component).get(ChangeDetectorRef).unregister();
+  }
+
+  static createComponentTemplate(component: CustomHTMLElement, options: ComponentOptions) {
     const useShadowDom = options.shadowDom !== false;
 
     let templateText = options.template || '';
@@ -202,18 +206,27 @@ export class CustomElement {
     const currentContentNodes = Array.from(component.children);
     component.append(templateContent);
     const slot = component.querySelector('slot');
-    component.isAttachingNodes = true;
+
+    isAttachingNodesToSlot = true;
     currentContentNodes.forEach((node) => slot.append(node));
-    delete component.isAttachingNodes;
+    isAttachingNodesToSlot = false;
   }
 
-  static copyHostAttributes(component: CustomHTMLElement, options: ComponentOptions) {
-    const { hostAttributes } = options;
+  static onInit(element: CustomHTMLElement, options: ComponentOptions) {
+    CustomElementInternal.createComponentInjector(element, options);
+    CustomElementInternal.createComponentTemplate(element, options);
+    CustomElementInternal.setupChangeDetector(element);
 
-    if (!hostAttributes) return;
+    plugins.forEach((plugin) => plugin.onInit(element, options));
+  }
 
-    Object.keys(hostAttributes).forEach((attribute) => {
-      component.setAttribute(attribute, hostAttributes[attribute]);
-    });
+  static onDestroy(element: CustomHTMLElement) {
+    CustomElementInternal.teardownChangeDetector(element);
+
+    plugins.forEach((plugin) => plugin.onDestroy(element));
+  }
+
+  static onError(element: CustomHTMLElement, error: any) {
+    plugins.forEach((plugin) => plugin.onError(element, error));
   }
 }

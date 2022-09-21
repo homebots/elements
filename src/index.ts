@@ -20,7 +20,7 @@ export { Component, Child, Children, Input, Output } from './component-decorator
 export {
   ComponentOptions,
   CustomHTMLElement,
-  HostAttributes,
+  CustomElementPlugin,
   LifecycleHook,
   OnBeforeCheck,
   OnDestroy,
@@ -32,7 +32,7 @@ export {
 export { ContainerRegistry } from './containers/registry';
 export { DomScanner } from './dom/dom-scanner';
 export { Dom } from './dom/dom';
-export { DomEventEmitter, EventCallback, EventEmitter, dispatchDomEvent } from './events';
+export { Emitter, EventCallback, DomEventEmitter, EventEmitter, dispatchDomEvent } from './events';
 export { ExecutionContext, ExecutionLocals, SealedExecutionContext, NullContext } from './execution-context';
 export { InputOptions } from './inputs';
 export { noop, domReady } from './utils';

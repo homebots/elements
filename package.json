@@ -41,8 +41,7 @@
     "zone.js": "^0.11.8"
   },
   "dependencies": {
-    "@homebots/injector": "^1.5.0",
-    "rxjs": "^7.5.6"
+    "@homebots/injector": "^1.5.0"
   },
   "publishConfig": {
     "access": "public"
