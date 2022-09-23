@@ -1,5 +1,4 @@
 import { ChangeDetectorRef, Changes, ChangesCallback } from './change-detection/change-detection';
-import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { ExecutionContext } from './execution-context';
 import { noop } from './utils';
 import { DomScanner } from './dom/dom-scanner';
@@ -90,9 +89,8 @@ export class CustomElement {
 
         try {
           CustomElementInternal.onInit(this, options);
-          this.onInit();
         } catch (error) {
-          CustomElementInternal.onError(this, options);
+          CustomElementInternal.onError(this, error);
         }
       }
 
@@ -101,7 +99,6 @@ export class CustomElement {
           return;
         }
 
-        this.onDestroy();
         CustomElementInternal.onDestroy(this);
       }
     };
@@ -133,28 +130,31 @@ export class CustomElementInternal {
     return null;
   }
 
+  static findParentInjector(component: CustomHTMLElement) {
+    return (component.parentComponent && Injector.getInjectorOf(component.parentComponent)) || Injector.global;
+  }
+
   static createComponentInjector(component: CustomHTMLElement, options: ComponentOptions) {
-    const parent = options.parentInjector || Injector.getInjectorOf(component.parentComponent) || Injector.global;
-    const injector = new Injector(parent);
+    let injector = Injector.getInjectorOf(component);
+
+    if (!injector) {
+      const parent = options.parentInjector || CustomElementInternal.findParentInjector(component);
+      injector = new Injector(parent);
+
+
+      const localChangeDetector = parent.get(ChangeDetectorRef).fork(component);
+      injector.provide(ChangeDetectorRef, Value(localChangeDetector));
+
+      Injector.setInjectorOf(component, injector);
+    }
 
     if (options.providers) {
       injector.provideAll(options.providers);
     }
 
-    if (!injector.canProvide(ChangeDetectorRef)) {
-      injector.provide(ChangeDetectorRef, ReactiveChangeDetector);
-    } else {
-      const localChangeDetector = injector.get(ChangeDetectorRef).fork(component);
-      injector.provide(ChangeDetectorRef, Value(localChangeDetector));
-    }
-
     if (options.shadowDom === undefined) {
       options.shadowDom = injector.get(ShadowDomToggle).enabled;
     }
-
-    Injector.setInjectorOf(component, injector);
-
-    return injector;
   }
 
   static setupChangeDetector(component: CustomHTMLElement) {
@@ -217,15 +217,19 @@ export class CustomElementInternal {
     CustomElementInternal.setupChangeDetector(element);
 
     plugins.forEach((plugin) => plugin.onInit(element, options));
+
+    element.onInit();
   }
 
   static onDestroy(element: CustomHTMLElement) {
+    element.onDestroy();
     CustomElementInternal.teardownChangeDetector(element);
 
     plugins.forEach((plugin) => plugin.onDestroy(element));
   }
 
   static onError(element: CustomHTMLElement, error: any) {
+    console.error(error);
     plugins.forEach((plugin) => plugin.onError(element, error));
   }
 }

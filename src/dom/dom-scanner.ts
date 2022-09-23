@@ -15,7 +15,7 @@ export class DomScanner {
       return;
     }
 
-    const expression = Dom.createTextPlaceholders(node.textContent);
+    const expression = Dom.createTextPlaceholders(node.textContent.trim());
     changeDetector.watch({
       expression: () => executionContext.run(expression),
       callback: (value: string) => (node.textContent = value),

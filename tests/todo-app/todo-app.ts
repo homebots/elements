@@ -9,8 +9,8 @@ export interface Task {
   tag: 'todo-app',
   template: `
     <form (submit.stop)="this.addTask(newtask.value); newtask.value = ''">
-      <input #newtask />
-      <button type="submit" [disabled]="!newtask.value">add</button>
+      <input #newtask (input) />
+      <button type="submit">add</button>
     </form>
     <ul>
       <template *for="'task'" [of]="this.tasks">
@@ -27,7 +27,7 @@ export class TodoApp extends HTMLElement {
   tasks: Task[] = [];
 
   addTask(title: string) {
-    this.tasks.push({ done: false, title });
+    this.tasks = [...this.tasks, { done: false, title }];
   }
 
   removeTask(title: string) {

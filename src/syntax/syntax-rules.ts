@@ -23,7 +23,7 @@ export class SyntaxRules {
   }
 
   match(changeDetector: ChangeDetector, executionContext: ExecutionContext, element: HTMLElement, attribute: string) {
-    const value = element.getAttribute(attribute);
+    const value = String(element.getAttribute(attribute)).trim();
     const sanitizedAttributeName = this.cleanAttributeName(attribute);
 
     this.rules.forEach((rule) => {

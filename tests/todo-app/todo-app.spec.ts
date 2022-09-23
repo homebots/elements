@@ -6,8 +6,8 @@ import './todo-app';
 beforeAll(() => Injector.global.get(ShadowDomToggle).disable());
 
 class TodoInteractor {
-  private taskInput = this.$.querySelector('input')!;
-  private okButton = this.$.querySelector('button')!;
+  private get taskInput() { return this.$.querySelector('input')!; }
+  private get okButton() { return this.$.querySelector('button')!; }
 
   constructor(protected $: HTMLElement) {}
 
@@ -15,8 +15,10 @@ class TodoInteractor {
     return Array.from(this.$.querySelectorAll('li'));
   }
 
-  addTask(task: string) {
+  async addTask(task: string) {
     this.taskInput.value = task;
+    // this.taskInput.dispatchEvent(new Event('input', { bubbles: true }));
+    // await wait(10);
     this.okButton.click();
   }
 
@@ -28,9 +30,10 @@ class TodoInteractor {
 
 fdescribe('todo app', () => {
   function setup() {
-    const element = createElement('todo-app');
+    const element = document.createElement('todo-app');
     const app = Bootstrap.createApplication(element);
     const interactor = new TodoInteractor(element);
+    document.body.appendChild(element);
 
     return { element, app, interactor };
   }
@@ -40,10 +43,10 @@ fdescribe('todo app', () => {
     await app.check();
     await wait(10);
     debugger;
-    expect(element.querySelector<HTMLButtonElement>('form button')?.disabled).toBe(true);
+    // expect(element.querySelector<HTMLButtonElement>('form button')!.disabled).toBe(true);
 
-    interactor.addTask('Task 1');
-    interactor.addTask('Task 2');
+    await interactor.addTask('Task 1');
+    await interactor.addTask('Task 2');
 
     await app.check();
     await wait(10);
@@ -51,7 +54,7 @@ fdescribe('todo app', () => {
     const tasks = interactor.tasks.map((task) => String(task.textContent).trim());
     expect(tasks).toEqual(['Task 1', 'Task 2']);
 
-    interactor.removeTask('Task 2');
+    await interactor.removeTask('Task 2');
 
     expect(tasks).toEqual(['Task 1']);
   });

@@ -17,7 +17,7 @@ import { ShadowDomToggle } from './settings';
 
 const defaultChangeDetector = { type: ChangeDetectorRef, use: ReactiveChangeDetector };
 const defaultOptions = {
-  providers: [defaultChangeDetector],
+  providers: [],
 };
 
 export interface BootstrapOptions {
@@ -39,16 +39,13 @@ export class Bootstrap {
     };
 
     const { providers } = options;
-    const changeDetectorProvided = providers.find((p) => typeof p !== 'function' && p.type === ChangeDetectorRef);
-    if (!changeDetectorProvided) {
-      providers.push(defaultChangeDetector);
-    }
+    providers.unshift(defaultChangeDetector);
 
     const application = new Application(rootNode, providers);
     Bootstrap.whenReady(() => application.check());
 
     if (options.useShadowDom !== undefined) {
-      application.injector().get(ShadowDomToggle).toggle(options.useShadowDom);
+      application.injector.get(ShadowDomToggle).toggle(options.useShadowDom);
     }
 
     return application;
