@@ -73,9 +73,9 @@ export class ReactiveChangeDetector implements ChangeDetector {
     }
   }
 
-  async markAsDirtyAndCheck() {
+  markAsDirtyAndCheck() {
     this.markTreeForCheck();
-    return void this.scheduleTreeCheck();
+    return this.scheduleTreeCheck();
   }
 
   check() {
@@ -133,9 +133,13 @@ export class ReactiveChangeDetector implements ChangeDetector {
     this.children.forEach((cd) => cd.checkTree());
   }
 
-  async scheduleTreeCheck() {
+  scheduleTreeCheck(options: { async?: boolean } = {}) {
     if (this.root !== this) {
-      return this.root.scheduleTreeCheck();
+      return this.root.scheduleTreeCheck(options);
+    }
+
+    if (!options.async) {
+      this.checkTree();
     }
 
     if (this.timer) {

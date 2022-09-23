@@ -10,18 +10,23 @@ export interface Task {
   template: `
     <form (submit.stop)="this.addTask(newtask.value); newtask.value = ''">
       <input #newtask (input) />
-      <button type="submit">add</button>
+      <button type="submit" [disabled]="!newtask.value">add</button>
     </form>
     <ul>
       <template *for="'task'" [of]="this.tasks">
         <li>
           <input type="checkbox" (change.stop)="task.done = !task.done" [value]="task.done" />
           <span>{{ task.title }}</span>
-          <button (click)="this.removeTask(task.title)"></button>
+          <button (click)="this.removeTask(task.title)">remove</button>
         </li>
       </template>
     </ul>
   `,
+  styles: `
+  ul { list-style: none; margin: 0; padding: 1rem }
+  li { display: flex }
+  li > span { flex-grow: 1 }
+  `
 })
 export class TodoApp extends HTMLElement {
   tasks: Task[] = [];

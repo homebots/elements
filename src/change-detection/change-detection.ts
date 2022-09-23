@@ -37,7 +37,7 @@ export interface ChangeDetector {
 
   markAsDirtyAndCheck(): Promise<void>;
   markTreeForCheck(): void;
-  scheduleTreeCheck(): void;
+  scheduleTreeCheck(options?: { async: boolean }): void;
   check(): void;
   checkTree(): void;
   unregister(): void;

@@ -141,7 +141,6 @@ export class CustomElementInternal {
       const parent = options.parentInjector || CustomElementInternal.findParentInjector(component);
       injector = new Injector(parent);
 
-
       const localChangeDetector = parent.get(ChangeDetectorRef).fork(component);
       injector.provide(ChangeDetectorRef, Value(localChangeDetector));
 

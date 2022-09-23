@@ -1,14 +1,15 @@
-import { CustomElement } from '.';
+import { CustomElement, CustomHTMLElement } from '.';
 
 describe('CustomElement', () => {
-  it('should create a custom element class', () => {
-    const customElement = CustomElement.create(class extends HTMLElement {}, { tag: 'x-custom' });
-    const instance = document.createElement('x-custom') as any;
+  it('should define a custom element class', () => {
+    const tag = 'x-custom' + Math.random();
+    CustomElement.define(class extends HTMLElement {}, { tag });
+    const instance = document.createElement(tag) as CustomHTMLElement;
 
-    expect(typeof customElement).toBe('function');
-    expect(instance.onInit).toBe('function');
-    expect(instance.onDestroy).toBe('function');
-    expect(instance.onBeforeCheck).toBe('function');
-    expect(instance.onChanges).toBe('function');
+    expect(customElements.get(tag)).not.toBeUndefined();
+    expect(typeof instance.onInit).toBe('function');
+    expect(typeof instance.onDestroy).toBe('function');
+    expect(typeof instance.onBeforeCheck).toBe('function');
+    expect(typeof instance.onChanges).toBe('function');
   });
 });

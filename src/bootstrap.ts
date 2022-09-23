@@ -1,7 +1,6 @@
-import { Provider, Injector } from '@homebots/injector';
+import { Provider, Injector, TreeInjector } from '@homebots/injector';
 import { domReady } from './utils';
-import { Application } from './application';
-import { ChangeDetectorRef } from './change-detection/change-detection';
+import { ChangeDetector, ChangeDetectorRef } from './change-detection/change-detection';
 import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
@@ -25,6 +24,12 @@ export interface BootstrapOptions {
   useShadowDom?: boolean;
 }
 
+export interface Application {
+  injector: Injector;
+  changeDetector: ChangeDetector;
+  check(): Promise<void>;
+}
+
 export class Bootstrap {
   private static promise: Promise<unknown> = domReady().then(() => Bootstrap.addDefaultRules());
 
@@ -32,7 +37,7 @@ export class Bootstrap {
     return (this.promise = this.promise.then(fn));
   }
 
-  static createApplication(rootNode: HTMLElement = document.body, options?: BootstrapOptions) {
+  static createApplication(rootNode: HTMLElement = document.body, options?: BootstrapOptions): Application {
     options = {
       ...defaultOptions,
       ...options,
@@ -41,14 +46,33 @@ export class Bootstrap {
     const { providers } = options;
     providers.unshift(defaultChangeDetector);
 
-    const application = new Application(rootNode, providers);
-    Bootstrap.whenReady(() => application.check());
+    const injector = Bootstrap.setupInjector(rootNode, providers);
+    const changeDetector = injector.get(ChangeDetectorRef);
 
     if (options.useShadowDom !== undefined) {
-      application.injector.get(ShadowDomToggle).toggle(options.useShadowDom);
+      injector.get(ShadowDomToggle).toggle(options.useShadowDom);
     }
 
-    return application;
+    const app = {
+      injector,
+      changeDetector,
+      check() {
+        return changeDetector.markAsDirtyAndCheck();
+      },
+    };
+
+    Bootstrap.whenReady(() => app.check());
+
+    return app;
+  }
+
+  static setupInjector(rootNode: HTMLElement, providers: Provider[] = []) {
+    const injector = new TreeInjector();
+
+    Injector.setInjectorOf(rootNode, injector);
+    injector.provideAll(providers);
+
+    return injector;
   }
 
   static addDefaultRules() {

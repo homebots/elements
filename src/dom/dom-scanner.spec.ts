@@ -4,11 +4,18 @@ import { DomScanner } from './dom-scanner';
 import { ReactiveChangeDetector } from '../change-detection/reactive-change-detector';
 import { ExecutionContext } from '../execution-context';
 
-describe('DomScanner', () => {
+fdescribe('DomScanner', () => {
   afterEach(() => clearDom());
 
   it('should replace text markers in a text node with data binding tags', () => {
     const node = createHtml('You say {{ youSay }} and I say {{ iSay }}');
-    inject(DomScanner).scanElement(node, new ReactiveChangeDetector(), new ExecutionContext());
+    const context = new ExecutionContext();
+    const cd = new ReactiveChangeDetector();
+    context.addLocals({ youSay: 'goodbye', iSay: 'hello' });
+
+    inject(DomScanner).scanElement(node, cd, context);
+    cd.scheduleTreeCheck();
+
+    // expect(node.textContent.trim()).toBe('');
   });
 });

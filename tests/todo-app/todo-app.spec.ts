@@ -1,61 +1,70 @@
-import { createElement, wait } from '../../src/testing';
+import { wait } from '../../src/testing';
 import { Injector } from '@homebots/injector';
-import { Bootstrap, ShadowDomToggle } from '../../src/index';
+import { Bootstrap, Application, ShadowDomToggle } from '../../src/index';
 import './todo-app';
 
-beforeAll(() => Injector.global.get(ShadowDomToggle).disable());
+// beforeAll(() => Injector.global.get(ShadowDomToggle).disable());
 
 class TodoInteractor {
-  private get taskInput() { return this.$.querySelector('input')!; }
-  private get okButton() { return this.$.querySelector('button')!; }
+  get taskInput() {
+    return this.$.querySelector('input')!;
+  }
 
-  constructor(protected $: HTMLElement) {}
+  get okButton() {
+    return this.$.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  }
 
   get tasks() {
     return Array.from(this.$.querySelectorAll('li'));
   }
 
+  get taskNames() {
+    return this.tasks.map((task) => String(task.querySelector('span')!.textContent).trim());
+  }
+
+  async whenReady() {
+    await this.app.check();
+    return await wait(1);
+  }
+
+  constructor(protected $: HTMLElement, protected app: Application) {}
+
   async addTask(task: string) {
     this.taskInput.value = task;
-    // this.taskInput.dispatchEvent(new Event('input', { bubbles: true }));
-    // await wait(10);
+    this.taskInput.dispatchEvent(new Event('input', { bubbles: true }));
     this.okButton.click();
+    return this.whenReady();
   }
 
   removeTask(task: string) {
-    const taskNode = this.tasks.find((node) => node.innerText.trim() === task);
+    const taskNode = this.tasks.find((node) => node.innerText.trim().includes(task));
     taskNode!.querySelector('button')!.click();
+    return this.whenReady();
   }
 }
 
-fdescribe('todo app', () => {
+describe('todo app', () => {
   function setup() {
     const element = document.createElement('todo-app');
     const app = Bootstrap.createApplication(element);
-    const interactor = new TodoInteractor(element);
+    const interactor = new TodoInteractor(element, app);
+
     document.body.appendChild(element);
 
     return { element, app, interactor };
   }
 
   it('shows a list of tasks', async () => {
-    const { element, interactor, app } = setup();
-    await app.check();
-    await wait(10);
-    debugger;
-    // expect(element.querySelector<HTMLButtonElement>('form button')!.disabled).toBe(true);
+    const { interactor, app } = setup();
+    await interactor.whenReady();
+
+    expect(interactor.okButton.disabled).toBe(true);
 
     await interactor.addTask('Task 1');
     await interactor.addTask('Task 2');
-
-    await app.check();
-    await wait(10);
-
-    const tasks = interactor.tasks.map((task) => String(task.textContent).trim());
-    expect(tasks).toEqual(['Task 1', 'Task 2']);
+    expect(interactor.taskNames).toEqual(['Task 1', 'Task 2']);
 
     await interactor.removeTask('Task 2');
-
-    expect(tasks).toEqual(['Task 1']);
+    expect(interactor.taskNames).toEqual(['Task 1']);
   });
 });

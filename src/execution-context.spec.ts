@@ -1,6 +1,6 @@
 import { ExecutionContext, SealedExecutionContext } from '.';
 
-describe('ExecutionContext', () => {
+fdescribe('ExecutionContext', () => {
   it('runs an expression with provided locals and element', () => {
     const context = new ExecutionContext(null);
     context.addLocals({ number: 123, string: 'alice' });
@@ -67,15 +67,16 @@ describe('ExecutionContext', () => {
 
     expect(() => context.run('number + 1')).toThrow(new ReferenceError('number is not defined'));
   });
-});
 
-describe('SealedExecutionContext', () => {
-  it('prevents context modifications ', () => {
-    const context = new ExecutionContext(null);
-    const sealedContext = new SealedExecutionContext(context);
+  describe('SealedExecutionContext', () => {
+    it('prevents context modifications ', () => {
+      const context = new ExecutionContext(null);
+      const sealedContext = new SealedExecutionContext(context);
 
-    sealedContext.reset();
-    sealedContext.addLocals({ local: true });
-    expect(() => sealedContext.run('local')).toThrow(new ReferenceError('local is not defined'));
+      sealedContext.reset();
+      sealedContext.addLocals({ local: true });
+      expect(() => sealedContext.run('local')).toThrow(new ReferenceError('local is not defined'));
+    });
   });
 });
+
