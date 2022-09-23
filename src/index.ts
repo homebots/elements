@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-export { Application, ApplicationRef } from './application';
+export { Application } from './application';
 export { Bootstrap, BootstrapOptions } from './bootstrap';
 
 export {

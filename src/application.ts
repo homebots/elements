@@ -1,9 +1,7 @@
-import { InjectionToken, Injector, Provider, TreeInjector, Value } from '@homebots/injector';
+import { Injector, Provider, TreeInjector, Value } from '@homebots/injector';
 import { DomScanner } from './dom/dom-scanner';
 import { ChangeDetector, ChangeDetectorRef } from './change-detection/change-detection';
-import { ExecutionContext, NullContext } from './execution-context';
-
-export const ApplicationRef = new InjectionToken<Application>('ApplicationRef');
+import { ExecutionContext } from './execution-context';
 
 export class Application {
   private changeDetector: ChangeDetector;
@@ -13,7 +11,7 @@ export class Application {
     (rootNode as any).application = this;
 
     const injector = this.injector();
-    this.changeDetector = injector.createNew(ChangeDetectorRef);
+    this.changeDetector = injector.get(ChangeDetectorRef);
     injector.get(DomScanner).scanTree(rootNode, this.changeDetector, new ExecutionContext(rootNode));
   }
 
@@ -24,8 +22,7 @@ export class Application {
     Injector.setInjectorOf(this, injector);
 
     injector.provideAll(providers);
-    injector.provide(ApplicationRef, Value(this));
-    injector.provide(ExecutionContext, Value(NullContext));
+    injector.provide(Application, Value(this));
   }
 
   async check() {

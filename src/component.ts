@@ -45,10 +45,10 @@ export interface CustomHTMLElement extends HTMLElement {
   onChanges: ChangesCallback;
 }
 
-export abstract class CustomElementPlugin {
-  abstract onInit(element: CustomHTMLElement, options: ComponentOptions): void;
-  abstract onDestroy(element: CustomHTMLElement): void;
-  abstract onError(element: CustomHTMLElement, error: any): void;
+export class CustomElementPlugin {
+  onInit(_element: CustomHTMLElement, _options: ComponentOptions): void {}
+  onDestroy(_element: CustomHTMLElement): void {}
+  onError(_element: CustomHTMLElement, _error: any): void {}
 }
 
 const lifeCycleHooks = ['onInit', 'onDestroy', 'onChanges', 'onBeforeCheck'];
@@ -134,11 +134,12 @@ export class CustomElementInternal {
   }
 
   static createComponentInjector(component: CustomHTMLElement, options: ComponentOptions) {
-    const parentInjector =
-      options.parentInjector || Injector.getInjectorOf(component.parentComponent) || Injector.global;
-    const injector = new Injector(parentInjector);
+    const parent = options.parentInjector || Injector.getInjectorOf(component.parentComponent) || Injector.global;
+    const injector = new Injector(parent);
 
-    injector.provideAll(options.providers || []);
+    if (options.providers) {
+      injector.provideAll(options.providers);
+    }
 
     if (!injector.canProvide(ChangeDetectorRef)) {
       injector.provide(ChangeDetectorRef, ReactiveChangeDetector);
@@ -158,11 +159,9 @@ export class CustomElementInternal {
 
   static setupChangeDetector(component: CustomHTMLElement) {
     const injector = Injector.getInjectorOf(component);
-    const changeDetector = injector.get(ChangeDetectorRef);
+    const changeDetector = injector.get(ChangeDetectorRef).fork();
     const executionContext = new ExecutionContext(component);
     const dom = injector.get(DomScanner);
-
-    injector.provide(ExecutionContext, Value(executionContext));
 
     Array.from(component.shadowRoot?.children || component.children).forEach((node) =>
       dom.scanTree(node as HTMLElement, changeDetector, executionContext),
