@@ -140,6 +140,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
 
     if (!options.async) {
       this.checkTree();
+      return;
     }
 
     if (this.timer) {

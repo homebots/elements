@@ -6,14 +6,13 @@ describe('native and custom events', () => {
 
   it('should handle event once and detach handler', async () => {
     const template = `
-      <span [innerText]="this.count + ' times'"></span>
+      <span>{{ this.count + ' times' }}</span>
       <button (click.once)="this.count++">+</button>`;
     const rootNode = createHtml(template);
     const app = Bootstrap.createApplication(rootNode);
 
     rootNode.count = 0;
-    app.check();
-    await wait();
+    await app.check();
 
     expect(rootNode.querySelector('span').innerText).toBe('0 times');
 
@@ -36,8 +35,7 @@ describe('native and custom events', () => {
 
     const rootNode = createHtml(template);
     const app = Bootstrap.createApplication(rootNode);
-    app.check();
-    await wait();
+    await app.check();
     rootNode.querySelector('button').click();
 
     expect(rootNode.lastEvent).not.toBe(undefined);

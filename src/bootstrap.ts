@@ -13,6 +13,9 @@ import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
 import { ViewContainerRule } from './syntax/view-container.rule';
 import { ShadowDomToggle } from './settings';
+import { customElementTag } from './constants';
+import { DomScanner } from './dom/dom-scanner';
+import { ExecutionContext } from './execution-context';
 
 const defaultChangeDetector = { type: ChangeDetectorRef, use: ReactiveChangeDetector };
 const defaultOptions = {
@@ -51,6 +54,10 @@ export class Bootstrap {
 
     if (options.useShadowDom !== undefined) {
       injector.get(ShadowDomToggle).toggle(options.useShadowDom);
+    }
+
+    if (!rootNode[customElementTag]) {
+      injector.get(DomScanner).scanTree(rootNode, changeDetector, new ExecutionContext(rootNode));
     }
 
     const app = {

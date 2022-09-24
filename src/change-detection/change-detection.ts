@@ -28,6 +28,10 @@ export interface Watcher {
 
 export const ChangeDetectorRef = new InjectionToken<ChangeDetector>('ChangeDetector');
 
+export interface CheckOptions {
+  async: boolean;
+}
+
 export interface ChangeDetector {
   id?: string;
   parent?: ChangeDetector;
@@ -37,7 +41,7 @@ export interface ChangeDetector {
 
   markAsDirtyAndCheck(): Promise<void>;
   markTreeForCheck(): void;
-  scheduleTreeCheck(options?: { async: boolean }): void;
+  scheduleTreeCheck(options?: CheckOptions): void;
   check(): void;
   checkTree(): void;
   unregister(): void;

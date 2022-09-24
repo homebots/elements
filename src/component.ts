@@ -5,6 +5,7 @@ import { DomScanner } from './dom/dom-scanner';
 import { InjectionToken, TreeInjector as Injector, Provider, Value } from '@homebots/injector';
 import { ShadowDomToggle } from './settings';
 import { Dom } from './dom/dom';
+import { customElementTag } from './constants';
 
 const defaultShadowDomOptions: ShadowRootInit = { mode: 'open' };
 let isAttachingNodesToSlot = false;
@@ -122,7 +123,7 @@ export class CustomElementInternal {
     let parentComponent: any = component;
 
     while (parentComponent && (parentComponent = parentComponent.parentNode || parentComponent.host)) {
-      if (Injector.getInjectorOf(parentComponent)) {
+      if (parentComponent[customElementTag]) {
         return parentComponent;
       }
     }
@@ -211,6 +212,7 @@ export class CustomElementInternal {
   }
 
   static onInit(element: CustomHTMLElement, options: ComponentOptions) {
+    element[customElementTag] = true;
     CustomElementInternal.createComponentInjector(element, options);
     CustomElementInternal.createComponentTemplate(element, options);
     CustomElementInternal.setupChangeDetector(element);

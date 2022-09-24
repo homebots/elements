@@ -31,10 +31,10 @@ export class ExecutionContext {
 
   run(expression: string, localValues?: ExecutionLocals, options?: RunOptions) {
     const fn = this.compile(expression, localValues, options);
+
     try {
       return fn();
     } catch (e) {
-      console.error(expression, e.message);
       throw e;
     }
   }
@@ -45,11 +45,20 @@ export class ExecutionContext {
     const cacheKey = expression + localsByName;
 
     if (!expressionCache.has(cacheKey)) {
-      expressionCache.set(cacheKey, Function(...localsByName, `${options?.noReturn ? '' : 'return'} ${expression}`));
+      const fn = this.createFunction(expression, localsByName, options);
+      expressionCache.set(cacheKey, fn);
     }
 
     const localsAsArray = localsByName.map((key) => locals[key]);
     return expressionCache.get(cacheKey).bind(this.thisValue, ...localsAsArray);
+  }
+
+  private createFunction(expression: string, localsByName: string[], options?: RunOptions) {
+    const functionBody = `
+    'use strict';
+    ${options?.noReturn ? '' : 'return'} ${expression}
+    `.trim();
+    return Function(...localsByName, functionBody);
   }
 
   private getLocals(additionalValues?: ExecutionLocals) {

@@ -1,6 +1,6 @@
 import { ExecutionContext, SealedExecutionContext } from '.';
 
-fdescribe('ExecutionContext', () => {
+describe('ExecutionContext', () => {
   it('runs an expression with provided locals and element', () => {
     const context = new ExecutionContext(null);
     context.addLocals({ number: 123, string: 'alice' });
