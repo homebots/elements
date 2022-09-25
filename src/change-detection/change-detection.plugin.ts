@@ -10,10 +10,16 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
   static readonly root: ChangeDetector = new ReactiveChangeDetector(null, null);
 
   onCreate(element: CustomHTMLElement): void {
-    this.createChangeDetector(element as CustomHTMLElement & OnBeforeCheck);
+    console.log('create', element.nodeName, element.parentComponent?.nodeName);
   }
 
   onInit(element: CustomHTMLElement) {
+    const detector = ChangeDetector.getDetectorOf(element);
+
+    if (!detector) {
+      this.createChangeDetector(element as CustomHTMLElement & OnBeforeCheck);
+    }
+
     ChangeDetector.getDetectorOf(element).markAsDirtyAndCheck();
   }
 

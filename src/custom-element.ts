@@ -12,15 +12,6 @@ export interface ComponentOptions {
 
 export type LifecycleHook = () => void;
 
-export interface OnInit {
-  onInit: LifecycleHook;
-}
-
-export interface OnDestroy {
-  onDestroy: LifecycleHook;
-}
-
-const plugins: CustomElementPlugin[] = [];
 const customElementsTag = Symbol('CustomElement');
 
 export interface CustomHTMLElement extends HTMLElement {
@@ -39,9 +30,10 @@ export class CustomElementPlugin {
 }
 
 export class CustomElement {
+  static plugins: CustomElementPlugin[] = [];
   static tag = customElementsTag;
   static use(plugin: CustomElementPlugin) {
-    plugins.push(plugin);
+    CustomElement.plugins.push(plugin);
     return CustomElement;
   }
 
@@ -112,23 +104,23 @@ export class CustomElementInternal {
   }
 
   static onCreate(element: CustomHTMLElement, options: ComponentOptions) {
-    plugins.forEach((plugin) => plugin.onCreate(element, options));
+    CustomElement.plugins.forEach((plugin) => plugin.onCreate(element, options));
   }
 
   static onInit(element: CustomHTMLElement, options: ComponentOptions) {
-    plugins.forEach((plugin) => plugin.onInit(element, options));
+    CustomElement.plugins.forEach((plugin) => plugin.onInit(element, options));
 
-    element.onInit?.();
+    element.onInit && element.onInit();
   }
 
   static onDestroy(element: CustomHTMLElement) {
-    element.onDestroy?.();
+    element.onDestroy && element.onDestroy();
 
-    plugins.forEach((plugin) => plugin.onDestroy(element));
+    CustomElement.plugins.forEach((plugin) => plugin.onDestroy(element));
   }
 
   static onError(element: CustomHTMLElement, error: any) {
     console.error(element, error);
-    plugins.forEach((plugin) => plugin.onError(element, error));
+    CustomElement.plugins.forEach((plugin) => plugin.onError(element, error));
   }
 }

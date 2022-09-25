@@ -17,9 +17,7 @@ export {
 export { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 export { ZoneChangeDetector } from './change-detection/zone-change-detector';
 export {
-  ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement, LifecycleHook,
-  OnDestroy,
-  OnInit
+  ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement,
 } from './custom-element';
 export { Child, Children, Component, Input, Output } from './component-decorators';
 export { ContainerRegistry } from './containers/registry';
