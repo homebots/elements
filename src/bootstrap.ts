@@ -1,10 +1,13 @@
-import { Provider, Injector, TreeInjector } from '@homebots/injector';
-import { domReady } from './utils';
-import { ChangeDetector, ChangeDetectorRef } from './change-detection/change-detection';
-import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
+import { Injector, Provider, TreeInjector } from '@homebots/injector';
+import { ChangeDetector } from './change-detection/change-detection';
+import { ChangeDetectionPlugin } from './change-detection/change-detection.plugin';
+import { CustomElement } from './component';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
 import { ContainerRegistry } from './containers/registry';
+import { DomScanner } from './dom/dom-scanner';
+import { ExecutionContext } from './execution-context';
+import { ShadowDomToggle } from './settings';
 import { AddEventListenerRule } from './syntax/add-event-listener.rule';
 import { NodeReferenceRule } from './syntax/node-reference.rule';
 import { SetAttributeRule } from './syntax/set-attribute.rule';
@@ -12,15 +15,7 @@ import { SetClassRule } from './syntax/set-class.rule';
 import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
 import { ViewContainerRule } from './syntax/view-container.rule';
-import { ShadowDomToggle } from './settings';
-import { customElementTag } from './constants';
-import { DomScanner } from './dom/dom-scanner';
-import { ExecutionContext } from './execution-context';
-
-const defaultChangeDetector = { type: ChangeDetectorRef, use: ReactiveChangeDetector };
-const defaultOptions = {
-  providers: [],
-};
+import { domReady } from './utils';
 
 export interface BootstrapOptions {
   providers?: Provider[];
@@ -34,41 +29,27 @@ export interface Application {
 }
 
 export class Bootstrap {
-  private static promise: Promise<unknown> = domReady().then(() => Bootstrap.addDefaultRules());
-
-  static whenReady(fn: (...args: any[]) => any) {
-    return (this.promise = this.promise.then(fn));
-  }
-
-  static createApplication(rootNode: HTMLElement = document.body, options?: BootstrapOptions): Application {
-    options = {
-      ...defaultOptions,
-      ...options,
-    };
-
-    const { providers } = options;
-    providers.unshift(defaultChangeDetector);
-
-    const injector = Bootstrap.setupInjector(rootNode, providers);
-    const changeDetector = injector.get(ChangeDetectorRef);
+  static createApplication(rootNode: HTMLElement = document.body, options: BootstrapOptions = {}): Application {
+    const injector = Bootstrap.setupInjector(rootNode, options.providers);
 
     if (options.useShadowDom !== undefined) {
+      injector.provide(ShadowDomToggle);
       injector.get(ShadowDomToggle).toggle(options.useShadowDom);
     }
 
-    if (!rootNode[customElementTag]) {
-      injector.get(DomScanner).scanTree(rootNode, changeDetector, new ExecutionContext(rootNode));
+    if (!rootNode[CustomElement.tag]) {
+      injector.get(DomScanner).scanTree(rootNode, ChangeDetectionPlugin.root, new ExecutionContext(rootNode));
     }
 
     const app = {
       injector,
-      changeDetector,
+      changeDetector: ChangeDetectionPlugin.root,
       check() {
-        return changeDetector.markAsDirtyAndCheck();
+        return ChangeDetectionPlugin.root.markAsDirtyAndCheck();
       },
     };
 
-    Bootstrap.whenReady(() => app.check());
+    domReady().then(() => app.check());
 
     return app;
   }
@@ -81,20 +62,20 @@ export class Bootstrap {
 
     return injector;
   }
-
-  static addDefaultRules() {
-    const injector = Injector.global;
-    const syntaxRules = injector.get(SyntaxRules);
-    const containerRegistry = injector.get(ContainerRegistry);
-
-    syntaxRules.addRule(injector.get(NodeReferenceRule));
-    syntaxRules.addRule(injector.get(ViewContainerRule));
-    syntaxRules.addRule(injector.get(SetPropertyRule));
-    syntaxRules.addRule(injector.get(SetAttributeRule));
-    syntaxRules.addRule(injector.get(SetClassRule));
-    syntaxRules.addRule(injector.get(AddEventListenerRule));
-
-    containerRegistry.set('if', IfContainer);
-    containerRegistry.set('for', ForContainer);
-  }
 }
+
+domReady().then(() => {
+  const injector = Injector.global;
+  const syntaxRules = injector.get(SyntaxRules);
+  const containerRegistry = injector.get(ContainerRegistry);
+
+  syntaxRules.addRule(injector.get(NodeReferenceRule));
+  syntaxRules.addRule(injector.get(ViewContainerRule));
+  syntaxRules.addRule(injector.get(SetPropertyRule));
+  syntaxRules.addRule(injector.get(SetAttributeRule));
+  syntaxRules.addRule(injector.get(SetClassRule));
+  syntaxRules.addRule(injector.get(AddEventListenerRule));
+
+  containerRegistry.set('if', IfContainer);
+  containerRegistry.set('for', ForContainer);
+});

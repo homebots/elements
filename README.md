@@ -7,7 +7,7 @@ features, like [dependency injection](https://github.com/homebots/injector), cha
 
 ## Lifecycle hooks
 
-Every custome element can implement one of the following hooks: `onChanges`, `OnInit`, `OnDestroy`, `OnBeforeCheck`
+Every custome element can implement one of the following hooks: `OnInit`, `OnDestroy`, `onChanges`, `OnBeforeCheck`
 
 ## Change detection
 

@@ -7,9 +7,6 @@ describe('CustomElement', () => {
     const instance = document.createElement(tag) as CustomHTMLElement;
 
     expect(customElements.get(tag)).not.toBeUndefined();
-    expect(typeof instance.onInit).toBe('function');
-    expect(typeof instance.onDestroy).toBe('function');
-    expect(typeof instance.onBeforeCheck).toBe('function');
-    expect(typeof instance.onChanges).toBe('function');
+    expect(instance[CustomElement.tag]).toBe(true);
   });
 });

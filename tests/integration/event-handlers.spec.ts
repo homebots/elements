@@ -1,5 +1,5 @@
-import { Bootstrap } from '..';
-import { clearDom, createHtml, wait } from '@homebots/elements/testing';
+import { Bootstrap } from '../../src/index';
+import { clearDom, createHtml, wait } from '../../src/testing';
 
 describe('native and custom events', () => {
   afterEach(() => clearDom());

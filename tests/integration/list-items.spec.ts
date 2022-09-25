@@ -1,5 +1,5 @@
-import { Bootstrap } from '../';
-import { clearDom, createHtml, wait } from '@homebots/elements/testing';
+import { Bootstrap } from '../../src/index';
+import { clearDom, createHtml, wait } from '../../src/testing';
 
 describe('template containers (if/for)', () => {
   afterEach(() => clearDom());
@@ -7,9 +7,9 @@ describe('template containers (if/for)', () => {
   it('should repeat correctly the items in a template', async () => {
     const template = `
       <ul>
-        <p [innerText]="this.items.length + ' items'"></p>
+        <p>{{ this.items.length + ' items' }}</p>
         <template *for="'item'" [of]="this.items">
-          <li [innerText]="item"></li>
+          <li>{{ item }}</li>
         </template>
       </ul>`;
 

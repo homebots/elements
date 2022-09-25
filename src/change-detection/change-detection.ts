@@ -50,3 +50,15 @@ export interface ChangeDetector {
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
   fork(target?: any): ChangeDetector;
 }
+
+export class ChangeDetector {
+  private static readonly tag = Symbol('ChangeDetector');
+
+  static getDetectorOf(target: any): ChangeDetector {
+    return target[ChangeDetector.tag];
+  }
+
+  static setDetectorOf(target: any, detector: ChangeDetector): void {
+    target[ChangeDetector.tag] = detector;
+  }
+}

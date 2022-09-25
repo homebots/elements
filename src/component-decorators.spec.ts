@@ -1,5 +1,5 @@
+import { Child, Children, Component, CustomElement, DomEventEmitter, domReady, Input, Output } from '.';
 import { INPUTS_METADATA } from './inputs';
-import { Component, Child, Children, Input, Output, CustomElement, Bootstrap, noop, DomEventEmitter } from '.';
 
 describe('decorators', () => {
   it('should have decorators to find child nodes inside a component', () => {
@@ -21,12 +21,13 @@ describe('decorators', () => {
 
   it('should have decorator to create a component', async () => {
     expect(typeof Component === 'function').toBe(true);
-    const spy = spyOn(CustomElement, 'define');
+    const spy = spyOn(CustomElement, 'define').and.callThrough();
+    const tagName = `x-test${Math.random()}`;
 
-    @Component({ template: `<span>test</span>`, tag: 'x-test' })
+    @Component({ template: `<span>test</span>`, tag: tagName })
     class TestComponent extends HTMLElement {}
 
-    await Bootstrap.whenReady(noop);
+    await domReady();
 
     expect(typeof TestComponent).toBe('function');
     expect(spy).toHaveBeenCalled();

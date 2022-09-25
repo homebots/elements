@@ -10,7 +10,7 @@ export interface RunOptions {
 }
 
 const expressionCache = new Map<string, Fn>();
-// const AsyncFunction = (async function () {}).constructor;
+const AsyncFunction = async function () {}.constructor;
 
 export class ExecutionContext {
   locals: ExecutionLocals;
@@ -54,11 +54,13 @@ export class ExecutionContext {
   }
 
   private createFunction(expression: string, localsByName: string[], options?: RunOptions) {
+    const constructor = expression.startsWith('await') ? AsyncFunction : Function;
     const functionBody = `
-    'use strict';
-    ${options?.noReturn ? '' : 'return'} ${expression}
+      'use strict';
+      ${options?.noReturn ? '' : 'return'} ${expression}
     `.trim();
-    return Function(...localsByName, functionBody);
+
+    return constructor(...localsByName, functionBody);
   }
 
   private getLocals(additionalValues?: ExecutionLocals) {

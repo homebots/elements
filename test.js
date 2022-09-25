@@ -1,1 +1,1 @@
-beforeAll(() => console.log('\x1Bc'));
+//beforeAll(() => console.log('\x1Bc'));

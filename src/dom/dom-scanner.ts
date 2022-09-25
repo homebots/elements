@@ -3,7 +3,7 @@ import { ExecutionContext } from '../execution-context';
 import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
 import { Dom } from './dom';
-import { customElementTag } from '../constants';
+import { CustomElement } from '../component';
 
 export type HTMLAnchoredTemplateElement = HTMLTemplateElement & { anchor: Comment };
 
@@ -61,7 +61,7 @@ export class DomScanner {
   }
 
   scanTree(element: Node, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
-    if (element[customElementTag]) {
+    if (element[CustomElement.tag]) {
       return;
     }
 

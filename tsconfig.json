@@ -2,7 +2,7 @@
   "compileOnSave": true,
   "compilerOptions": {
     "moduleResolution": "node",
-    "target": "ESNext",
+    "target": "es2020",
     "lib": ["ESNext", "DOM"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -11,10 +11,7 @@
     "typeRoots": ["./node_modules/@types"],
     "outDir": "./dist",
     "declaration": true,
-    "baseUrl": ".",
-    "paths": {
-      "@homebots/elements/testing": ["./src/testing/index.ts"]
-    }
+    "baseUrl": "."
   },
   "files": ["src/index.ts"],
   "include": ["src/**/*.ts"]

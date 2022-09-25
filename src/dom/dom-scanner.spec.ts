@@ -1,5 +1,5 @@
 import { inject } from '@homebots/injector';
-import { clearDom, createHtml } from '@homebots/elements/testing';
+import { clearDom, createHtml } from '../testing';
 import { DomScanner } from './dom-scanner';
 import { ReactiveChangeDetector } from '../change-detection/reactive-change-detector';
 import { ExecutionContext } from '../execution-context';

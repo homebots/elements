@@ -8,9 +8,9 @@ export interface Task {
 @Component({
   tag: 'todo-app',
   template: `
-    <form (submit.stop)="this.addTask(newtask.value); newtask.value = ''">
+    <form (submit.stop)="">
       <input #newtask (input) />
-      <button type="submit" [disabled]="!newtask.value">add</button>
+      <button type="button" (click)="this.addTask(newtask.value); newtask.value = ''" [disabled]="!newtask.value">add</button>
     </form>
     <ul>
       <template *for="'task'" [of]="this.tasks">

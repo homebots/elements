@@ -6,5 +6,7 @@ describe('CustomElement', () => {
     expect(CustomElement.create).toBeDefined();
     expect(CustomElement.define).toBeDefined();
     expect(CustomElement.use).toBeDefined();
+
+    expect(globalThis.CusomElement).toBe(CustomElement);
   });
 });

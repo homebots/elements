@@ -1,6 +1,6 @@
 import { wait } from '../../src/testing';
 import { Injector } from '@homebots/injector';
-import { Bootstrap, Application, ShadowDomToggle } from '../../src/index';
+import { Bootstrap, Application, ShadowDomToggle, domReady } from '../../src/index';
 import './todo-app';
 
 beforeAll(() => Injector.global.get(ShadowDomToggle).disable());
@@ -43,8 +43,9 @@ class TodoInteractor {
   }
 }
 
-describe('todo app', () => {
-  function setup() {
+fdescribe('todo app', () => {
+  async function setup() {
+    await domReady();
     const element = document.createElement('todo-app');
     const app = Bootstrap.createApplication(element);
     const interactor = new TodoInteractor(element, app);
@@ -55,9 +56,13 @@ describe('todo app', () => {
   }
 
   it('shows a list of tasks', async () => {
-    const { interactor, element } = setup();
+    const { interactor, element } = await setup();
+    debugger;
+    console.log(element);
+
     await interactor.whenReady();
     console.log(element);
+
     expect(interactor.okButton.disabled).toBe(true);
 
     await interactor.addTask('Task 1');
