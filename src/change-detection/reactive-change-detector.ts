@@ -1,7 +1,7 @@
 import { default as clone } from 'lodash.clone';
 import { default as isEqual } from 'lodash.isequal';
 import { AnyFunction, setTimeoutNative } from '../utils';
-import { CustomHTMLElement } from '../component';
+import { CustomHTMLElement } from '../custom-element';
 import { ChangeCallback, ChangeDetector, Changes, Expression, Watcher } from './change-detection';
 import { Injectable } from '@homebots/injector';
 

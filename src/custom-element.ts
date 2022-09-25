@@ -128,7 +128,7 @@ export class CustomElementInternal {
   }
 
   static onError(element: CustomHTMLElement, error: any) {
-    console.error(error);
+    console.error(element, error);
     plugins.forEach((plugin) => plugin.onError(element, error));
   }
 }

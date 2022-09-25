@@ -11,7 +11,7 @@ class TodoInteractor {
   }
 
   get okButton() {
-    return this.$.querySelector<HTMLButtonElement>('button[type=submit]')!;
+    return this.$.querySelector<HTMLButtonElement>('button')!;
   }
 
   get tasks() {
@@ -43,7 +43,7 @@ class TodoInteractor {
   }
 }
 
-fdescribe('todo app', () => {
+describe('todo app', () => {
   async function setup() {
     await domReady();
     const element = document.createElement('todo-app');
@@ -56,12 +56,8 @@ fdescribe('todo app', () => {
   }
 
   it('shows a list of tasks', async () => {
-    const { interactor, element } = await setup();
-    debugger;
-    console.log(element);
-
+    const { interactor } = await setup();
     await interactor.whenReady();
-    console.log(element);
 
     expect(interactor.okButton.disabled).toBe(true);
 

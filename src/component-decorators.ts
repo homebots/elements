@@ -1,7 +1,7 @@
 /// <reference types="reflect-metadata" />
 
 import { DomEventEmitter, Emitter } from './events';
-import { ComponentOptions, CustomElement } from './component';
+import { ComponentOptions, CustomElement } from './custom-element';
 import { InputOptions, INPUTS_METADATA, InputWatcher } from './inputs';
 import { domReady } from './utils';
 

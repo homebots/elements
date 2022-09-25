@@ -1,7 +1,7 @@
 import { Injector, Provider, TreeInjector } from '@homebots/injector';
 import { ChangeDetector } from './change-detection/change-detection';
 import { ChangeDetectionPlugin } from './change-detection/change-detection.plugin';
-import { CustomElement } from './component';
+import { CustomElement } from './custom-element';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
 import { ContainerRegistry } from './containers/registry';

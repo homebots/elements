@@ -1,4 +1,4 @@
-import { CustomElementPlugin, CustomHTMLElement, LifecycleHook } from '../component';
+import { CustomElementPlugin, CustomHTMLElement, LifecycleHook } from '../custom-element';
 import { ChangeDetector, OnChanges } from './change-detection';
 import { ReactiveChangeDetector } from './reactive-change-detector';
 

@@ -1,5 +1,5 @@
 import { TreeInjector as Injector } from '@homebots/injector';
-import { ComponentOptions, CustomElementPlugin, CustomHTMLElement } from '../component';
+import { ComponentOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element';
 import { ShadowDomToggle } from '../settings';
 
 export class InjectorPlugin extends CustomElementPlugin {

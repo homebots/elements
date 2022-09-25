@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { ChangeDetectionPlugin } from './change-detection/change-detection.plugin';
-import { CustomElement } from './component';
+import { CustomElement } from './custom-element';
 import { InjectorPlugin } from './dependency-injection/injector.plugin';
 import { TemplatePlugin, TemplateRef } from './dom/template.plugin';
 
@@ -20,7 +20,7 @@ export {
   ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement, LifecycleHook,
   OnDestroy,
   OnInit
-} from './component';
+} from './custom-element';
 export { Child, Children, Component, Input, Output } from './component-decorators';
 export { ContainerRegistry } from './containers/registry';
 export { Dom } from './dom/dom';

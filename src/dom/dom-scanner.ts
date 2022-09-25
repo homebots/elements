@@ -3,7 +3,7 @@ import { ExecutionContext } from '../execution-context';
 import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
 import { Dom } from './dom';
-import { CustomElement } from '../component';
+import { CustomElement } from '../custom-element';
 
 export type HTMLAnchoredTemplateElement = HTMLTemplateElement & { anchor: Comment };
 
