@@ -27,7 +27,7 @@ describe('DomScanner', () => {
     const scanner = inject(DomScanner);
 
     scanner.scanTree(node, cd, context);
-    cd.markAsDirtyAndCheck();
+    cd.detectChanges();
 
     expect(node.querySelector('p').title).toBe('test');
     expect(node.querySelector('p').dir).toBe('rtl');
@@ -41,7 +41,7 @@ describe('DomScanner', () => {
     context.addLocals({ youSay: 'goodbye', iSay: 'hello' });
 
     inject(DomScanner).scanTree(node, cd, context);
-    cd.markAsDirtyAndCheck();
+    cd.detectChanges();
 
     expect(node.textContent.trim()).toBe('You say goodbye and I say hello');
   });

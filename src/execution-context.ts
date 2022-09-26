@@ -54,7 +54,7 @@ export class ExecutionContext {
   }
 
   private createFunction(expression: string, localsByName: string[], options?: RunOptions) {
-    const constructor = expression.startsWith('await') ? AsyncFunction : Function;
+    const constructor = expression.startsWith('await') || options?.async ? AsyncFunction : Function;
     const functionBody = `
       'use strict';
       ${options?.noReturn ? '' : 'return'} ${expression}

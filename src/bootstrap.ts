@@ -1,6 +1,6 @@
 import { Injector, Provider, TreeInjector } from '@homebots/injector';
 import { ChangeDetector } from './change-detection/change-detection';
-import { ChangeDetectionPlugin } from './change-detection/change-detection.plugin';
+import { ChangeDetectionPlugin } from './plugins/change-detection.plugin';
 import { CustomElement } from './custom-element';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
@@ -16,6 +16,7 @@ import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
 import { ViewContainerRule } from './syntax/view-container.rule';
 import { domReady } from './utils';
+import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 
 export interface BootstrapOptions {
   providers?: Provider[];
@@ -25,7 +26,7 @@ export interface BootstrapOptions {
 export interface Application {
   injector: Injector;
   changeDetector: ChangeDetector;
-  check(): Promise<void>;
+  check(): Promise<void> | void;
 }
 
 export class Bootstrap {
@@ -37,7 +38,8 @@ export class Bootstrap {
       injector.get(ShadowDomToggle).toggle(options.useShadowDom);
     }
 
-    if (!rootNode[CustomElement.tag]) {
+    if (!CustomElement.isCustomElement(rootNode)) {
+      ChangeDetector.setDetectorOf(rootNode, ChangeDetectionPlugin.root);
       injector.get(DomScanner).scanTree(rootNode, ChangeDetectionPlugin.root, new ExecutionContext(rootNode));
     }
 
@@ -45,7 +47,7 @@ export class Bootstrap {
       injector,
       changeDetector: ChangeDetectionPlugin.root,
       check() {
-        return ChangeDetectionPlugin.root.markAsDirtyAndCheck();
+        return ChangeDetectionPlugin.root.detectChanges();
       },
     };
 

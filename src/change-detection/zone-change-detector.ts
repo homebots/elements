@@ -1,7 +1,5 @@
 /// <reference types="zone.js/dist/zone.js" />
 
-import { Injectable } from '@homebots/injector';
-import { CustomHTMLElement } from '../custom-element';
 import { ChangeDetector } from './change-detection';
 import { ReactiveChangeDetector } from './reactive-change-detector';
 
@@ -9,7 +7,6 @@ interface ZoneProperties {
   changeDetector: ChangeDetector;
 }
 
-@Injectable()
 export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSpec, ChangeDetector {
   get name() {
     return this.id;
@@ -32,8 +29,11 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
     return this.zone.runGuarded(callback, applyThis, applyArgs, this.id);
   }
 
-  fork(component: CustomHTMLElement) {
-    return new ZoneChangeDetector(component, this);
+  fork() {
+    const cd = new ZoneChangeDetector();
+    this.attachToParent(cd);
+
+    return cd;
   }
 
   protected runWatcherCallback(callback: Function, applyThis?: any, applyArgs?: any[]) {
@@ -76,6 +76,6 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
   private scheduleZoneCheck(zone: Zone) {
     const changeDetector: ChangeDetector = zone.get('changeDetector');
 
-    changeDetector.markAsDirtyAndCheck();
+    changeDetector.detectChanges();
   }
 }

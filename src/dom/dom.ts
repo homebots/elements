@@ -2,6 +2,8 @@ import { HTMLTemplateElementProxy, TemplateProxy } from './template-proxy';
 
 export class Dom {
   static setProperty(element: HTMLElement, property: string, value: any) {
+    console.log('setProperty', element, property, value);
+
     if (Dom.isTemplateProxy(element)) {
       element.proxy.setProperty(property, value);
 

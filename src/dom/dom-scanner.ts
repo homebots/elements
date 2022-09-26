@@ -3,7 +3,6 @@ import { ExecutionContext } from '../execution-context';
 import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
 import { Dom } from './dom';
-import { CustomElement } from '../custom-element';
 
 export type HTMLAnchoredTemplateElement = HTMLTemplateElement & { anchor: Comment };
 
@@ -16,6 +15,7 @@ export class DomScanner {
       return;
     }
 
+    // console.log('scan::text', node, String(changeDetector));
     const expression = Dom.createTextPlaceholders(node.textContent.trim());
     changeDetector.watch({
       expression: () => executionContext.run(expression),
@@ -43,7 +43,7 @@ export class DomScanner {
 
     if (Dom.isTemplateNode(element)) {
       const proxy = Dom.attachProxy(element);
-      changeDetector = changeDetector.fork(proxy);
+      changeDetector = changeDetector.fork();
       changeDetector.afterCheck((changes: Changes) => changes.size && proxy.onChanges(changes));
       const anchor = document.createComment('');
       (element as HTMLAnchoredTemplateElement).anchor = anchor;
@@ -51,6 +51,7 @@ export class DomScanner {
       element.remove();
     }
 
+    // console.log('scan::element', element, String(changeDetector));
     this.scanAttributes(element, changeDetector, executionContext);
   }
 
@@ -61,10 +62,6 @@ export class DomScanner {
   }
 
   scanTree(element: Node, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
-    if (element[CustomElement.tag]) {
-      return;
-    }
-
     if (element.childNodes?.length) {
       const children = Array.from(element.childNodes);
       for (const child of children) {

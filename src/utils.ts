@@ -13,7 +13,7 @@ export function domReady() {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', resolve);
     } else {
-      resolve(undefined);
+      setTimeout(resolve);
     }
   });
 }

@@ -1,43 +1,32 @@
-import { default as clone } from 'lodash.clone';
-import { default as isEqual } from 'lodash.isequal';
-import { AnyFunction, setTimeoutNative } from '../utils';
-import { CustomHTMLElement } from '../custom-element';
-import { ChangeCallback, ChangeDetector, Changes, Expression, Watcher } from './change-detection';
-import { Injectable } from '@homebots/injector';
+import { setTimeoutNative } from '../utils';
+import { ChangeDetector, CheckOptions } from './change-detection';
+import { Observer } from './observer';
 
 let uid = 0;
 
-@Injectable()
-export class ReactiveChangeDetector implements ChangeDetector {
+export class ReactiveChangeDetector extends Observer implements ChangeDetector {
   readonly id = `@${++uid}`;
-  protected children = new Map<HTMLElement, ReactiveChangeDetector>();
-  protected readonly root: ReactiveChangeDetector = this;
+  readonly root: ChangeDetector = this;
+  parent: ChangeDetector;
+  children: Array<ChangeDetector> = [];
 
-  private timer = 0;
-  protected state: 'checking' | 'checked' | 'dirty' = 'dirty';
-  private watchers: Watcher[] = [];
-  private _afterCheck: AnyFunction[] = [];
-  private _beforeCheck: AnyFunction[] = [];
+  constructor() {
+    super();
 
-  constructor(protected target: CustomHTMLElement = null, public parent: ReactiveChangeDetector = null) {
     if (this.parent) {
-      this.parent.children.set(this.target, this);
       this.root = this.parent.root;
     }
   }
 
-  beforeCheck(fn: AnyFunction) {
-    this._beforeCheck.push(fn);
-  }
-
-  afterCheck(fn: AnyFunction) {
-    this._afterCheck.push(fn);
-  }
-
-  unregister() {
-    if (this.parent) {
-      this.parent.children.delete(this.target);
+  detach() {
+    if (this.parent && this.parent.children) {
+      this.parent.children = this.parent.children.filter((child) => child !== this);
     }
+  }
+
+  attachToParent<T extends ChangeDetector>(cd: T) {
+    this.children.push(cd);
+    cd.parent = this;
   }
 
   run<T>(callback: Function, applyThis?: any, applyArgs?: any[]): T {
@@ -48,84 +37,16 @@ export class ReactiveChangeDetector implements ChangeDetector {
     }
   }
 
-  watch<T>(expression: Watcher | Expression<T>): void;
-  watch<T>(expression: Watcher | Expression<T>, callback?: ChangeCallback<T>, useEquals = false) {
-    if (typeof expression !== 'function') {
-      this.watchers.push(expression as Watcher);
-      return;
-    }
-
-    this.watchers.push({
-      expression: expression as Expression<T>,
-      callback,
-      useEquals,
-    });
-  }
-
   markTreeForCheck() {
     this.state = 'dirty';
-    this.children.forEach((child) => child.markTreeForCheck());
-
-    let cd: ReactiveChangeDetector = this;
-
-    while ((cd = cd.parent)) {
-      cd.state = 'dirty';
+    for (const child of this.children) {
+      child.markTreeForCheck();
     }
   }
 
-  markAsDirtyAndCheck() {
+  detectChanges(): Promise<void> | void {
     this.markTreeForCheck();
     return this.scheduleTreeCheck();
-  }
-
-  check() {
-    if (this.state === 'checked') {
-      return;
-    }
-
-    const inputChanges = new Changes();
-
-    this._beforeCheck.forEach((fn) => fn());
-    this.state = 'checking';
-    this.watchers.forEach((watcher) => this.checkWatcher(inputChanges, watcher));
-    this._afterCheck.forEach((fn) => fn(inputChanges));
-
-    this.state = 'checked';
-  }
-
-  protected checkWatcher(changes: Changes, watcher: Watcher) {
-    const newValue = this.runWatcher(watcher.expression, this.target, []);
-    const lastValue = watcher.lastValue;
-    const useEquals = watcher.useEquals;
-    const hasChanges = (!useEquals && newValue !== lastValue) || (useEquals && !isEqual(newValue, lastValue));
-
-    if (!hasChanges) {
-      return false;
-    }
-
-    if (watcher.property) {
-      changes.set(watcher.property, {
-        value: newValue,
-        lastValue,
-        firstTime: watcher.firstTime,
-      });
-
-      watcher.firstTime = false;
-    }
-
-    watcher.lastValue = useEquals ? clone(newValue) : newValue;
-
-    if (watcher.callback) {
-      this.runWatcherCallback(watcher.callback, null, [newValue, lastValue]);
-    }
-  }
-
-  protected runWatcher(...args: any[]) {
-    return this.run.apply(this, args);
-  }
-
-  protected runWatcherCallback(...args: any[]) {
-    return this.run.apply(this, args);
   }
 
   checkTree() {
@@ -133,12 +54,12 @@ export class ReactiveChangeDetector implements ChangeDetector {
     this.children.forEach((cd) => cd.checkTree());
   }
 
-  scheduleTreeCheck(options: { async?: boolean } = {}) {
+  scheduleTreeCheck(options?: CheckOptions) {
     if (this.root !== this) {
       return this.root.scheduleTreeCheck(options);
     }
 
-    if (!options.async) {
+    if (!options?.async) {
       this.checkTree();
       return;
     }
@@ -147,7 +68,7 @@ export class ReactiveChangeDetector implements ChangeDetector {
       clearTimeout(this.timer);
     }
 
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       this.timer = setTimeoutNative(() => {
         this.checkTree();
         this.timer = 0;
@@ -156,7 +77,15 @@ export class ReactiveChangeDetector implements ChangeDetector {
     });
   }
 
-  fork(target?: any) {
-    return new ReactiveChangeDetector(target || this.target, this);
+  fork() {
+    const cd = new ReactiveChangeDetector();
+    this.attachToParent(cd);
+
+    return cd;
   }
+
+  toString() {
+    return this.id;
+  }
+
 }

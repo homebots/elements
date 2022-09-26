@@ -49,7 +49,7 @@ export class ForContainer {
 
     this.adjustChildrenLength(items.length);
     this.prepareLocalsAndChildren(items, fragment);
-    this.changeDetector.markAsDirtyAndCheck();
+    this.changeDetector.detectChanges();
 
     setTimeoutNative(() => this.template.anchor.parentNode.appendChild(fragment));
   }

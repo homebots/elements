@@ -50,7 +50,7 @@ export class IfContainer {
     fragment.append(...nodes);
     nodes.forEach((node) => this.dom.scanTree(node as HTMLElement, changeDetector, this.executionContext));
 
-    this.changeDetector.markAsDirtyAndCheck();
+    this.changeDetector.detectChanges();
 
     setTimeoutNative(() => {
       template.anchor.parentNode.insertBefore(fragment, this.template.anchor);

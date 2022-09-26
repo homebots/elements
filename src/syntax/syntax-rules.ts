@@ -22,6 +22,10 @@ export class SyntaxRules {
     this.rules.push(rule);
   }
 
+  removeRule(rule: Function) {
+    this.rules = this.rules.filter(x => x instanceof rule);
+  }
+
   match(changeDetector: ChangeDetector, executionContext: ExecutionContext, element: HTMLElement, attribute: string) {
     const value = String(element.getAttribute(attribute)).trim();
     const sanitizedAttributeName = this.cleanAttributeName(attribute);

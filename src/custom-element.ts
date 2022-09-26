@@ -18,12 +18,15 @@ export interface CustomHTMLElement extends HTMLElement {
   readonly parentComponent: CustomHTMLElement;
   readonly [customElementsTag]: true;
 
+  [key: string | number | symbol]: any;
+
   onInit?: LifecycleHook;
   onDestroy?: LifecycleHook;
 }
 
 export class CustomElementPlugin {
   onCreate(_element: CustomHTMLElement, _options: ComponentOptions): void {}
+  onBeforeInit(_element: CustomHTMLElement, _options: ComponentOptions): void {}
   onInit(_element: CustomHTMLElement, _options: ComponentOptions): void {}
   onDestroy(_element: CustomHTMLElement): void {}
   onError(_element: CustomHTMLElement, _error: any): void {}
@@ -32,9 +35,14 @@ export class CustomElementPlugin {
 export class CustomElement {
   static plugins: CustomElementPlugin[] = [];
   static tag = customElementsTag;
+
   static use(plugin: CustomElementPlugin) {
     CustomElement.plugins.push(plugin);
     return CustomElement;
+  }
+
+  static isCustomElement(target: any) {
+    return target && target[customElementsTag];
   }
 
   static define(ComponentClass: typeof HTMLElement, options: ComponentOptions) {
@@ -69,12 +77,7 @@ export class CustomElement {
         }
 
         this.parentComponent = parentComponent;
-
-        try {
-          CustomElementInternal.onInit(this, options);
-        } catch (error) {
-          CustomElementInternal.onError(this, error);
-        }
+        CustomElementInternal.onBeforeInit(this, options);
       }
 
       disconnectedCallback() {
@@ -107,10 +110,31 @@ export class CustomElementInternal {
     CustomElement.plugins.forEach((plugin) => plugin.onCreate(element, options));
   }
 
-  static onInit(element: CustomHTMLElement, options: ComponentOptions) {
-    CustomElement.plugins.forEach((plugin) => plugin.onInit(element, options));
+  private static queue: Array<[element: CustomHTMLElement, options: ComponentOptions]> = [];
+  static queueTimer;
+  static queueTick() {
+    clearTimeout(this.queueTimer);
+    this.queueTimer = setTimeout(() => this.onInit(), 10);
+  }
 
-    element.onInit && element.onInit();
+  static onBeforeInit(element: CustomHTMLElement, options: ComponentOptions) {
+    CustomElementInternal.queue.push([element, options]);
+    CustomElementInternal.queueTick();
+
+    try {
+      CustomElement.plugins.forEach((plugin) => plugin.onBeforeInit(element, options));
+    } catch (error) {
+      CustomElementInternal.onError(element, error);
+    }
+  }
+
+  static onInit() {
+    CustomElementInternal.queue.forEach(([element, options]) => {
+      CustomElement.plugins.forEach((plugin) => plugin.onInit(element, options));
+      element.onInit && element.onInit();
+    });
+
+    CustomElementInternal.queue = [];
   }
 
   static onDestroy(element: CustomHTMLElement) {

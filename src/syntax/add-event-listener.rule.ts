@@ -45,7 +45,7 @@ export class AddEventListenerRule implements SyntaxRule {
         eventHandler.apply(element, [event]);
       }
 
-      changeDetector.markAsDirtyAndCheck();
+      changeDetector.detectChanges();
     };
 
     element.addEventListener(eventName, callback, { capture });

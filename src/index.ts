@@ -1,26 +1,28 @@
+import { Injector } from '@homebots/injector';
 import 'reflect-metadata';
-import { ChangeDetectionPlugin } from './change-detection/change-detection.plugin';
+import { ChangeDetector } from './change-detection/change-detection';
+import { ChangeDetectionPlugin } from './plugins/change-detection.plugin';
+import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 import { CustomElement } from './custom-element';
-import { InjectorPlugin } from './dependency-injection/injector.plugin';
-import { TemplatePlugin, TemplateRef } from './dom/template.plugin';
+import { InjectorPlugin } from './plugins/injector.plugin';
+import { TemplatePlugin, TemplateRef } from './plugins/template.plugin';
 
 export { Application, Bootstrap, BootstrapOptions } from './bootstrap';
 export {
   Change,
   ChangeCallback,
   ChangeDetector,
-  ChangeDetectorRef,
   Changes,
   Expression,
   Watcher
 } from './change-detection/change-detection';
 export { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 export { ZoneChangeDetector } from './change-detection/zone-change-detector';
-export {
-  ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement,
-} from './custom-element';
 export { Child, Children, Component, Input, Output } from './component-decorators';
 export { ContainerRegistry } from './containers/registry';
+export {
+  ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement
+} from './custom-element';
 export { Dom } from './dom/dom';
 export { DomScanner } from './dom/dom-scanner';
 export { dispatchDomEvent, DomEventEmitter, Emitter, EventCallback, EventEmitter } from './events';
@@ -40,6 +42,10 @@ export { InjectorPlugin, ChangeDetectionPlugin, TemplatePlugin, TemplateRef };
 CustomElement.use(new InjectorPlugin());
 CustomElement.use(new ChangeDetectionPlugin());
 CustomElement.use(new TemplatePlugin());
+
+if (!Injector.global.canProvide(ChangeDetector)) {
+  Injector.global.provideAll([{ type: ChangeDetector, use: ReactiveChangeDetector }]);
+}
 
 if (typeof globalThis !== 'undefined') {
   globalThis.CustomElement = CustomElement;

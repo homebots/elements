@@ -4,6 +4,7 @@ import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
 import { Dom } from '../dom/dom';
+import { CustomElement } from '../custom-element';
 
 type SetPropertyCallback = (property: string, value: any) => void;
 interface OnSetProperty {
@@ -32,7 +33,13 @@ export class SetPropertyRule implements SyntaxRule {
 
     changeDetector.watch({
       expression: () => executionContext.run(expression),
-      callback: (value: any) => Dom.setProperty(element, transformedProperty, value),
+      callback: (value: any) => {
+        Dom.setProperty(element, transformedProperty, value);
+
+        if (CustomElement.isCustomElement(element)) {
+          ChangeDetector.getDetectorOf(element).detectChanges();
+        }
+      },
       property,
       useEquals,
       firstTime: true,

@@ -124,7 +124,7 @@ export class AppService {
   @Inject() userService: UserService;
 
   // injected with symbol
-  @Inject(ChangeDetectorRef) userService: ChangeDetector;
+  @Inject(ChangeDetector) userService: ChangeDetector;
 }
 ```
 
