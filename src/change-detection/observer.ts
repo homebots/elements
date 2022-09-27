@@ -2,9 +2,36 @@ import { default as clone } from 'lodash.clone';
 import { default as isEqual } from 'lodash.isequal';
 
 import { AnyFunction } from '../utils';
-import { Watcher } from './change-detection';
 
-export class Observer {
+export interface Change<T> {
+  value: T;
+  lastValue: T | undefined;
+  firstTime?: boolean;
+}
+
+export type Changes = Record<string, Change<any>>;
+export type ChangesCallback = (changes: Changes) => void;
+export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined, firstTime: boolean) => void;
+export type Expression<T> = () => T;
+
+export interface Watcher<T = any> {
+  expression: Expression<T>;
+  callback?: ChangeCallback<T>;
+  lastValue?: T | undefined;
+  useEquals?: boolean;
+  property?: string;
+  firstTime?: boolean;
+}
+
+export interface IObserver {
+  beforeCheck(fn: AnyFunction): void;
+  afterCheck(fn: AnyFunction): void;
+  check(): void;
+  resume(): void;
+  watch(expression: Watcher): void;
+}
+
+export class Observer implements IObserver {
   protected timer = 0;
   protected state: 'checking' | 'checked' | 'dirty' | 'suspended' = 'suspended';
   protected watchers: Watcher[] = [];
@@ -24,7 +51,7 @@ export class Observer {
   }
 
   watch<T>(watcher: Watcher<T>) {
-    this.watchers.push(watcher);
+    this.watchers.push({ ...watcher, firstTime: true });
   }
 
   check() {
@@ -34,7 +61,6 @@ export class Observer {
 
     this._beforeCheck.forEach((fn) => fn());
     this.state = 'checking';
-    // console.log('checking', this.id, this.children.map(x => x.id));
 
     for (const watcher of this.watchers) {
       this.checkWatcher(watcher);

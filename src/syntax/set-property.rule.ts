@@ -1,10 +1,8 @@
 import { Injectable } from '@homebots/injector';
-import { getInputMetadata } from '../inputs';
 import { ChangeDetector } from '../change-detection/change-detection';
+import { Dom } from '../dom/dom';
 import { ExecutionContext } from '../execution-context';
 import { SyntaxRule } from './syntax-rules';
-import { Dom } from '../dom/dom';
-import { CustomElement } from '../custom-element';
 
 type SetPropertyCallback = (property: string, value: any) => void;
 interface OnSetProperty {
@@ -27,22 +25,14 @@ export class SetPropertyRule implements SyntaxRule {
     expression: string,
   ) {
     const transformedProperty = this.findElementProperty(element, property);
-    const inputProperties = Dom.isTemplateNode(element) ? [] : getInputMetadata(element);
-    const inputOptions = inputProperties.find((p) => p.property === property);
-    const useEquals = !!inputOptions?.options.useEquals;
 
     changeDetector.watch({
-      expression: () => executionContext.run(expression),
-      callback: (value: any) => {
-        Dom.setProperty(element, transformedProperty, value);
-
-        if (CustomElement.isCustomElement(element)) {
-          ChangeDetector.getDetectorOf(element).detectChanges();
-        }
+      expression() {
+        return executionContext.run(expression);
       },
-      property,
-      useEquals,
-      firstTime: true,
+      callback(value: any) {
+        Dom.setProperty(element, transformedProperty, value);
+      },
     });
   }
 

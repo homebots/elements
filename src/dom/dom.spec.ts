@@ -1,6 +1,6 @@
 import { html } from '../testing';
 import { Dom } from './dom';
-import { TemplateProxy } from './template-proxy';
+import { TemplateProxy } from '../containers/template-proxy';
 
 describe('Dom Utilities', () => {
   it('should set a property in a given element', () => {

@@ -1,14 +1,17 @@
-import { Changes, OnChanges } from '../change-detection/change-detection';
+import { OnChanges } from '../change-detection/change-detection';
+import { Changes } from '../change-detection/observer';
 
 export type HTMLTemplateElementProxy = HTMLTemplateElement & {
   proxy: TemplateProxy;
 };
 
-export class TemplateProxy {
+export class TemplateProxy extends HTMLElement {
   private target: OnChanges;
   private queue = [];
 
   onChanges(changes: Changes) {
+    if (!changes || !Object.keys(changes).length) return;
+
     if (this.target) {
       this.target.onChanges(changes);
       return;
@@ -35,4 +38,6 @@ export class TemplateProxy {
     this.queue.forEach((fn) => fn());
     this.queue.length = 0;
   }
+
+  static create() {}
 }

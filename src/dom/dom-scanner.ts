@@ -1,4 +1,4 @@
-import { ChangeDetector, Changes } from '../change-detection/change-detection';
+import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
@@ -15,7 +15,6 @@ export class DomScanner {
       return;
     }
 
-    // console.log('scan::text', node, String(changeDetector));
     const expression = Dom.createTextPlaceholders(node.textContent.trim());
     changeDetector.watch({
       expression: () => executionContext.run(expression),
@@ -44,14 +43,13 @@ export class DomScanner {
     if (Dom.isTemplateNode(element)) {
       const proxy = Dom.attachProxy(element);
       changeDetector = changeDetector.fork();
-      changeDetector.afterCheck((changes: Changes) => changes.size && proxy.onChanges(changes));
+      changeDetector.afterCheck((changes) => proxy.onChanges(changes));
       const anchor = document.createComment('');
       (element as HTMLAnchoredTemplateElement).anchor = anchor;
       element.parentNode.insertBefore(anchor, element);
       element.remove();
     }
 
-    // console.log('scan::element', element, String(changeDetector));
     this.scanAttributes(element, changeDetector, executionContext);
   }
 

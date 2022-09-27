@@ -1,8 +1,9 @@
 import { Injector } from '@homebots/injector';
 import { getInputMetadata } from 'src/inputs';
 import { CustomElementPlugin, CustomHTMLElement } from '../custom-element';
-import { ChangeDetector, Changes } from '../change-detection/change-detection';
+import { ChangeDetector } from '../change-detection/change-detection';
 import { ReactiveChangeDetector } from '../change-detection/reactive-change-detector';
+import { Changes } from '../change-detection/observer';
 
 export class ChangeDetectionPlugin extends CustomElementPlugin {
   static readonly root: ChangeDetector = new ReactiveChangeDetector();
@@ -19,7 +20,7 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
     const detector = ChangeDetector.getDetectorOf(element);
 
     this.updateChangeDetector(element, detector);
-    this.attachInputWatchers(element, detector);
+    ChangeDetectionPlugin.attachInputWatchers(element, detector);
 
     detector.scheduleTreeCheck({ async: true });
   }
@@ -50,17 +51,19 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
     }
   }
 
-  protected attachInputWatchers(element: CustomHTMLElement, changeDetector: ChangeDetector) {
+  static attachInputWatchers(element: CustomHTMLElement, changeDetector: ChangeDetector) {
     const inputs = getInputMetadata(element);
     if (!inputs.length || !element.onChanges) {
       return;
     }
 
     const inputNames = inputs.map((input) => input.property);
-    let changes;
+    let changes: Changes;
+    let count: number;
 
     changeDetector.beforeCheck(() => {
       changes = {};
+      count = 0;
     });
 
     for (const input of inputNames) {
@@ -70,33 +73,15 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
         },
 
         callback(value, lastValue, firstTime) {
-
-        }
-      })
+          changes[input] = { value, lastValue, firstTime };
+          count++;
+        },
+      });
     }
 
-    changeDetector.afterCheck((changes: Changes) => {
-      console.log(Array.from(changes.entries()));
+    changeDetector.afterCheck(() => {
+      count && element.onChanges(changes);
     });
-
-    // changeDetector.afterCheck((changes: Changes) => {
-    //   console.log('new changes', changes, changeDetector.id, changeDetector.parent.id);
-
-    //   if (!changes.size) {
-    //     return;
-    //   }
-
-    //   const inputChanges = new Changes();
-    //   inputNames.forEach((input) => {
-    //     if (changes.has(input)) {
-    //       inputChanges.set(input, changes.get(input));
-    //     }
-    //   });
-
-    //   if (inputChanges.size) {
-    //     element.onChanges(changes);
-    //   }
-    // });
   }
 
   protected updateChangeDetector(element: CustomHTMLElement, changeDetector: ChangeDetector) {

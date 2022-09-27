@@ -1,8 +1,9 @@
-import { ChangeDetector, Changes } from '../change-detection/change-detection';
+import { ChangeDetector } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Inject } from '@homebots/injector';
 import { DomScanner } from '../dom/dom-scanner';
 import { setTimeoutNative } from '../utils';
+import { Changes } from '../change-detection/observer';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
@@ -40,7 +41,7 @@ export class ForContainer {
       return;
     }
 
-    if (changes.has('for')) {
+    if (changes.for) {
       this.resetExecutionContext();
     }
 

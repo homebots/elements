@@ -8,21 +8,13 @@ import { InjectorPlugin } from './plugins/injector.plugin';
 import { TemplatePlugin, TemplateRef } from './plugins/template.plugin';
 
 export { Application, Bootstrap, BootstrapOptions } from './bootstrap';
-export {
-  Change,
-  ChangeCallback,
-  ChangeDetector,
-  Changes,
-  Expression,
-  Watcher
-} from './change-detection/change-detection';
+export { ChangeDetector } from './change-detection/change-detection';
+export { Change, ChangeCallback, Changes, Expression, Watcher } from './change-detection/observer';
 export { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 export { ZoneChangeDetector } from './change-detection/zone-change-detector';
 export { Child, Children, Component, Input, Output } from './component-decorators';
 export { ContainerRegistry } from './containers/registry';
-export {
-  ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement
-} from './custom-element';
+export { ComponentOptions, CustomElement, CustomElementPlugin, CustomHTMLElement } from './custom-element';
 export { Dom } from './dom/dom';
 export { DomScanner } from './dom/dom-scanner';
 export { dispatchDomEvent, DomEventEmitter, Emitter, EventCallback, EventEmitter } from './events';

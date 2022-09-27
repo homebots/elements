@@ -1,53 +1,29 @@
-import { AnyFunction } from '../utils';
+import { ChangesCallback, IObserver } from './observer';
 
-export type ChangeCallback<T> = (newValue: T, oldValue: T | undefined, firstTime: boolean) => void;
-export type Expression<T> = () => T;
-export type ChangesCallback = (changes: Changes) => void;
 
 export interface OnChanges {
   onChanges: ChangesCallback;
-}
-
-export interface Change<T> {
-  value: T;
-  lastValue: T | undefined;
-  firstTime?: boolean;
-}
-
-export class Changes extends Map<string, Change<unknown>> {}
-
-export interface Watcher<T = any> {
-  expression: () => T;
-  callback?: ChangeCallback<T>;
-  lastValue?: T | undefined;
-  useEquals?: boolean;
-  property?: string;
-  firstTime?: boolean;
 }
 
 export interface CheckOptions {
   async: boolean;
 }
 
-export interface ChangeDetector {
+export interface ChangeDetector extends IObserver {
   readonly root: ChangeDetector;
   id?: string;
   parent?: ChangeDetector;
   children?: ChangeDetector[];
 
-  beforeCheck(fn: AnyFunction): void;
-  afterCheck(fn: AnyFunction): void;
-  detectChanges(): Promise<void> | void;
   markTreeForCheck(): void;
   scheduleTreeCheck(options?: CheckOptions): void;
-  check(): void;
   checkTree(): void;
-  watch(expression: Watcher): void;
-  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
+  detectChanges(): Promise<void> | void;
+
   detach(): void;
+  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
   attachToParent(cd: ChangeDetector): void;
   fork(): ChangeDetector;
-  resume(): void;
 }
 
 export class ChangeDetector {

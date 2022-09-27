@@ -1,12 +1,15 @@
 import { Bootstrap, CustomElement, Input } from '../../src';
-import { createHtml } from '../../src/testing';
+import { createHtml, wait } from '../../src/testing';
 
 describe('change detection', () => {
-  fit('should watch changes inside a custom element', async () => {
+  it('should watch changes inside a custom element', async () => {
     const template = `
     <div [class.bold]="this.properties.bold"></div>
     <p [title]="this.properties.title">{{ this.properties.content }}</p>
-    <x-target [input1]="this.properties.input1"></x-target>
+    <x-target
+      [input1]="this.properties.input1"
+      [input2]="this.properties.input2"
+      ></x-target>
     `;
     const spy = jasmine.createSpy();
     const properties = {
@@ -14,11 +17,13 @@ describe('change detection', () => {
       title: 'text title',
       content: 'hello',
       input1: 'test',
+      input2: undefined,
     };
 
     class Test extends HTMLElement {
       @Input() input1: string;
       @Input() input2: string;
+
       onChanges(changes) {
         spy(changes);
       }
@@ -32,7 +37,8 @@ describe('change detection', () => {
     const cd = app.changeDetector;
 
     expect(cd).not.toBeUndefined();
-    cd.detectChanges();
+    await cd.detectChanges();
+    await wait(10);
 
     const target = root.querySelector('x-target') as any;
 
@@ -40,6 +46,19 @@ describe('change detection', () => {
     expect(root.querySelector('p')?.title).toBe(properties.title);
     expect(root.textContent?.trim()).toBe(properties.content);
     expect(target.input1).toBe('test');
-    expect(target.onChanges).toHaveBeenCalledWith({ input1: { firstTime: true, value: 'test', lastValue: undefined } });
+    expect(spy).toHaveBeenCalledWith({ input1: { firstTime: true, value: 'test', lastValue: undefined } });
+
+    Object.assign(properties, {
+      input1: 'after changes',
+      input2: 'new value',
+    });
+    spy.calls.reset();
+    await cd.detectChanges();
+    await wait(10);
+
+    expect(spy).toHaveBeenCalledWith({
+      input1: { firstTime: false, value: 'after changes', lastValue: 'test' },
+      input2: { firstTime: true, value: 'new value', lastValue: undefined },
+    });
   });
 });

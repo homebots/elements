@@ -16,7 +16,6 @@ import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
 import { ViewContainerRule } from './syntax/view-container.rule';
 import { domReady } from './utils';
-import { ReactiveChangeDetector } from './change-detection/reactive-change-detector';
 
 export interface BootstrapOptions {
   providers?: Provider[];

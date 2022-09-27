@@ -39,6 +39,7 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
 
   markTreeForCheck() {
     this.state = 'dirty';
+
     for (const child of this.children) {
       child.markTreeForCheck();
     }

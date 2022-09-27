@@ -1,12 +1,9 @@
-import { HTMLTemplateElementProxy, TemplateProxy } from './template-proxy';
+import { HTMLTemplateElementProxy, TemplateProxy } from '../containers/template-proxy';
 
 export class Dom {
   static setProperty(element: HTMLElement, property: string, value: any) {
-    console.log('setProperty', element, property, value);
-
     if (Dom.isTemplateProxy(element)) {
       element.proxy.setProperty(property, value);
-
       return;
     }
 
@@ -30,7 +27,7 @@ export class Dom {
   }
 
   static isTemplateProxy(node?: Node): node is HTMLTemplateElementProxy {
-    return Boolean(node && node.nodeName === 'TEMPLATE' && (node as any).proxy);
+    return Boolean(node && node.nodeName === 'X-TEMPLATE' && (node as any).proxy);
   }
 
   static attachProxy(element: Node) {
