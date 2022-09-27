@@ -12,20 +12,38 @@ export const ChildrenRef = Symbol('Children');
 
 export class TemplatePlugin extends CustomElementPlugin {
   onCreate(element: CustomHTMLElement, options: ComponentOptions): void {
-    this.applyTemplate(element, options);
+    this.createTemplateRef(element, options);
   }
 
-  onBeforeInit(element: CustomHTMLElement, options: ComponentOptions): void {
-    const usingShadowDom = options.shadowDom !== false;
+  onBeforeInit(element: CustomHTMLElement, options: ComponentOptions) {
+    const useShadowDom = options.shadowDom !== false;
+    if (useShadowDom) {
+      this.createShadowDom(options, element);
+    } else {
+      this.applyOpenTemplate(element);
+    }
 
     this.scanTree(element);
 
-    if (!usingShadowDom) {
+    if (!useShadowDom) {
       this.transposeContent(element);
     }
   }
 
-  protected applyTemplate(element: CustomHTMLElement, options: ComponentOptions): void {
+  private applyOpenTemplate(element: CustomHTMLElement) {
+    element[ChildrenRef] = Array.from(element.children);
+    element.appendChild(element[TemplateRef].content.cloneNode(true));
+  }
+
+  private createShadowDom(options: ComponentOptions, element: CustomHTMLElement) {
+    const templateContent = element[TemplateRef].content.cloneNode(true);
+    const shadowDomOptions = (options.shadowDom !== true && options.shadowDom) || defaultShadowDomOptions;
+    const shadowRoot = element.attachShadow(shadowDomOptions);
+    shadowRoot.appendChild(templateContent);
+    return;
+  }
+
+  private createTemplateRef(element: CustomHTMLElement, options: ComponentOptions) {
     let templateText = options.template || '';
     if (options.styles) {
       templateText += `<style>${options.styles}</style>`;
@@ -34,19 +52,8 @@ export class TemplatePlugin extends CustomElementPlugin {
     // TODO if !templateText return
     const templateRef = Dom.createTemplateFromHtml(templateText);
     element[TemplateRef] = templateRef;
-    const useShadowDom = options.shadowDom !== false;
 
-    const templateContent = templateRef.content.cloneNode(true);
-
-    if (useShadowDom) {
-      const shadowDomOptions = (options.shadowDom !== true && options.shadowDom) || defaultShadowDomOptions;
-      const shadowRoot = element.attachShadow(shadowDomOptions);
-      shadowRoot.appendChild(templateContent);
-      return;
-    }
-
-    element[ChildrenRef] = Array.from(element.children);
-    element.appendChild(templateContent);
+    return templateRef;
   }
 
   protected transposeContent(element: CustomHTMLElement) {

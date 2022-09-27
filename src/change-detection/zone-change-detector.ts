@@ -31,7 +31,7 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
 
   fork() {
     const cd = new ZoneChangeDetector();
-    this.attachToParent(cd);
+    this.adopt(cd);
 
     return cd;
   }
@@ -41,7 +41,15 @@ export class ZoneChangeDetector extends ReactiveChangeDetector implements ZoneSp
   }
 
   protected runWatcher(...args: any[]) {
-    return super.run.apply(this, args);
+    return this.tryCatch.apply(this, args);
+  }
+
+  protected tryCatch<T>(callback: Function, applyThis?: any, applyArgs?: any[]): T {
+    try {
+      return callback.apply(applyThis, applyArgs);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   onInvoke(

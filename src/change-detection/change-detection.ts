@@ -1,6 +1,5 @@
 import { ChangesCallback, IObserver } from './observer';
 
-
 export interface OnChanges {
   onChanges: ChangesCallback;
 }
@@ -10,19 +9,15 @@ export interface CheckOptions {
 }
 
 export interface ChangeDetector extends IObserver {
-  readonly root: ChangeDetector;
-  id?: string;
+  id: string;
+  root: ChangeDetector;
   parent?: ChangeDetector;
   children?: ChangeDetector[];
 
-  markTreeForCheck(): void;
-  scheduleTreeCheck(options?: CheckOptions): void;
-  checkTree(): void;
+  scheduleCheck(options?: CheckOptions): void;
   detectChanges(): Promise<void> | void;
-
   detach(): void;
-  run<T>(callback: Function, applyThis?: any, applyArgs?: any[], source?: string): T;
-  attachToParent(cd: ChangeDetector): void;
+  adopt(cd: ChangeDetector): void;
   fork(): ChangeDetector;
 }
 

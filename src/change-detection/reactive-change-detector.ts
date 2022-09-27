@@ -6,17 +6,9 @@ let uid = 0;
 
 export class ReactiveChangeDetector extends Observer implements ChangeDetector {
   readonly id = `@${++uid}`;
-  readonly root: ChangeDetector = this;
+  root: ChangeDetector = this;
   parent: ChangeDetector;
   children: Array<ChangeDetector> = [];
-
-  constructor() {
-    super();
-
-    if (this.parent) {
-      this.root = this.parent.root;
-    }
-  }
 
   detach() {
     if (this.parent && this.parent.children) {
@@ -24,44 +16,37 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
     }
   }
 
-  attachToParent<T extends ChangeDetector>(cd: T) {
+  adopt<T extends ChangeDetector>(cd: T) {
     this.children.push(cd);
     cd.parent = this;
+    cd.root = this.root;
   }
 
-  run<T>(callback: Function, applyThis?: any, applyArgs?: any[]): T {
-    try {
-      return callback.apply(applyThis, applyArgs);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  markTreeForCheck() {
-    this.state = 'dirty';
+  markAsDirty() {
+    super.markAsDirty();
 
     for (const child of this.children) {
-      child.markTreeForCheck();
+      child.markAsDirty();
     }
   }
 
   detectChanges(): Promise<void> | void {
-    this.markTreeForCheck();
-    return this.scheduleTreeCheck();
+    this.markAsDirty();
+    return this.scheduleCheck();
   }
 
-  checkTree() {
-    this.check();
-    this.children.forEach((cd) => cd.checkTree());
+  check() {
+    super.check();
+    this.children.forEach((cd) => cd.check());
   }
 
-  scheduleTreeCheck(options?: CheckOptions) {
+  scheduleCheck(options?: CheckOptions) {
     if (this.root !== this) {
-      return this.root.scheduleTreeCheck(options);
+      return this.root.scheduleCheck(options);
     }
 
     if (!options?.async) {
-      this.checkTree();
+      this.check();
       return;
     }
 
@@ -71,7 +56,7 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
 
     return new Promise<void>((resolve) => {
       this.timer = setTimeoutNative(() => {
-        this.checkTree();
+        this.check();
         this.timer = 0;
         resolve(null);
       }, 1);
@@ -80,7 +65,7 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
 
   fork() {
     const cd = new ReactiveChangeDetector();
-    this.attachToParent(cd);
+    this.adopt(cd);
 
     return cd;
   }
@@ -88,5 +73,4 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
   toString() {
     return this.id;
   }
-
 }

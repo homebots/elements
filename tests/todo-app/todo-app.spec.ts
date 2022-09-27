@@ -42,7 +42,7 @@ class TodoInteractor {
   }
 }
 
-xdescribe('todo app', () => {
+describe('todo app', () => {
   async function setup() {
     await domReady();
     const element = document.createElement('todo-app');

@@ -22,7 +22,8 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
     this.updateChangeDetector(element, detector);
     Dom.watchInputChanges(element, detector, getInputMetadata(element));
 
-    detector.scheduleTreeCheck({ async: true });
+    // detector.scheduleCheck({ async: true });
+    detector.detectChanges();
   }
 
   onDestroy(element: CustomHTMLElement): void {
@@ -53,11 +54,12 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
 
   protected updateChangeDetector(element: CustomHTMLElement, changeDetector: ChangeDetector) {
     const parent = this.findParentChangeDetector(element);
+
     if (changeDetector.parent != parent) {
       changeDetector.detach();
-      parent.attachToParent(changeDetector);
+      parent.adopt(changeDetector);
     }
 
-    changeDetector.resume();
+    changeDetector.markAsDirty();
   }
 }

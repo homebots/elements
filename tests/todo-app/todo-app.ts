@@ -6,21 +6,24 @@ export interface Task {
 }
 
 @Component({
+  shadowDom: false,
   tag: 'todo-app',
   template: `
     <form (submit.stop)="this.addTask(newtask.value); newtask.value = ''">
       <input #newtask (input) />
       <button type="submit" [disabled]="!newtask.value">add</button>
     </form>
-    <ul>
-      <template *for="'task'" [of]="this.tasks">
-        <li>
-          <input type="checkbox" (change.stop)="task.done = !task.done" [value]="task.done" />
-          <span>{{ task.title }}</span>
-          <button (click)="this.removeTask(task.title)">remove</button>
-        </li>
-      </template>
-    </ul>
+    <template *if="this.tasks.length">
+      <ul>
+        <template *for [for]="'task'" [of]="this.tasks">
+          <li>
+            <input type="checkbox" (change.stop)="task.done = !task.done" [value]="task.done" />
+            <span>{{ task.title }}</span>
+            <button (click)="this.removeTask(task.title)">remove</button>
+          </li>
+        </template>
+      </ul>
+  </template>
   `,
   styles: `
   ul { list-style: none; margin: 0; padding: 1rem }

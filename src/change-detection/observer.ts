@@ -27,7 +27,7 @@ export interface IObserver {
   beforeCheck(fn: AnyFunction): void;
   afterCheck(fn: AnyFunction): void;
   check(): void;
-  resume(): void;
+  markAsDirty(): void;
   watch(expression: Watcher): void;
 }
 
@@ -46,7 +46,7 @@ export class Observer implements IObserver {
     this._afterCheck.push(fn);
   }
 
-  resume() {
+  markAsDirty() {
     this.state = 'dirty';
   }
 
