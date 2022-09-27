@@ -1,4 +1,3 @@
-import { html } from '../testing';
 import { Dom } from './dom';
 
 describe('Dom Utilities', () => {
