@@ -1,14 +1,16 @@
+import { Inject, Injectable, Injector } from '@homebots/injector';
+import { getInputMetadata } from 'src/inputs';
 import { ChangeDetector } from '../change-detection/change-detection';
+import { Changes } from '../change-detection/observer';
+import { ContainerRegistry } from '../containers/registry';
 import { ExecutionContext } from '../execution-context';
-import { Injectable, Inject } from '@homebots/injector';
 import { SyntaxRules } from '../syntax/syntax-rules';
 import { Dom } from './dom';
-
-export type HTMLAnchoredTemplateElement = HTMLTemplateElement & { anchor: Comment };
 
 @Injectable()
 export class DomScanner {
   @Inject() private syntaxRules: SyntaxRules;
+  @Inject() private containerRegistry: ContainerRegistry;
 
   scanTextNode(node: Text, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
     if (node.textContent.indexOf('{{') === -1) {
@@ -41,16 +43,30 @@ export class DomScanner {
     }
 
     if (Dom.isTemplateNode(element)) {
-      const proxy = Dom.attachProxy(element);
-      changeDetector = changeDetector.fork();
-      changeDetector.afterCheck((changes) => proxy.onChanges(changes));
-      const anchor = document.createComment('');
-      (element as HTMLAnchoredTemplateElement).anchor = anchor;
-      element.parentNode.insertBefore(anchor, element);
-      element.remove();
+      this.scanTemplate(element as any, changeDetector, executionContext);
     }
 
-    this.scanAttributes(element, changeDetector, executionContext);
+    this.scanAttributes(element as HTMLElement, changeDetector, executionContext);
+  }
+
+  scanTemplate(template: HTMLTemplateElement, changeDetector: ChangeDetector, executionContext: ExecutionContext) {
+    const containerName =
+      template.getAttributeNames().find((value) => value.startsWith('*'))?.slice(1) || template.getAttribute('container');
+
+    if (!containerName || !this.containerRegistry.has(containerName)) {
+      return template;
+    }
+
+    changeDetector = changeDetector.fork();
+
+    const Class = this.containerRegistry.get(containerName);
+    const container = new Class(template, changeDetector, executionContext);
+    const inputs = getInputMetadata(container);
+    Injector.setInjectorOf(container, Injector.getInjectorOf(this));
+
+    (template as any).proxy = container;
+
+    Dom.watchInputChanges(container, changeDetector, inputs);
   }
 
   scanAttributes(element: HTMLElement, changeDetector: ChangeDetector, executionContext: ExecutionContext) {

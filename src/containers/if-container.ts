@@ -1,20 +1,21 @@
-import { ChangeDetector } from '../change-detection/change-detection';
+import { Inject } from '@homebots/injector';
+import { ChangeDetector, OnChanges } from '../change-detection/change-detection';
+import { Input } from '../component-decorators';
+import { DomScanner } from '../dom/dom-scanner';
 import { ExecutionContext } from '../execution-context';
 import { setTimeoutNative } from '../utils';
-import { Inject } from '@homebots/injector';
-import { DomScanner, HTMLAnchoredTemplateElement } from '../dom/dom-scanner';
 
 const IF = 0;
 const ELSE = 1;
 const NONE = 2;
 
-export class IfContainer {
+export class IfContainer implements OnChanges {
   @Inject() dom: DomScanner;
-  if: boolean;
-  else: HTMLAnchoredTemplateElement;
+  @Input() if: boolean;
+  @Input() else: HTMLTemplateElement;
 
   constructor(
-    private template: HTMLAnchoredTemplateElement,
+    private template: HTMLTemplateElement,
     private changeDetector: ChangeDetector,
     private executionContext: ExecutionContext,
   ) {}
@@ -41,7 +42,7 @@ export class IfContainer {
     }
   }
 
-  private createNodes(template: HTMLAnchoredTemplateElement) {
+  private createNodes(template: HTMLTemplateElement) {
     const templateNodes = Array.from(template.content.childNodes);
     const fragment = document.createDocumentFragment();
     const nodes = templateNodes.map((n) => n.cloneNode(true));
@@ -53,7 +54,7 @@ export class IfContainer {
     this.changeDetector.detectChanges();
 
     setTimeoutNative(() => {
-      template.anchor.parentNode.insertBefore(fragment, this.template.anchor);
+      template.parentNode.insertBefore(fragment, this.template);
       this.removeOldNodes();
       this.nodes = nodes;
     }, 2);

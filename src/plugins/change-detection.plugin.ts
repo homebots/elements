@@ -1,9 +1,9 @@
 import { Injector } from '@homebots/injector';
-import { getInputMetadata } from 'src/inputs';
-import { CustomElementPlugin, CustomHTMLElement } from '../custom-element';
+import { getInputMetadata } from '../inputs';
 import { ChangeDetector } from '../change-detection/change-detection';
 import { ReactiveChangeDetector } from '../change-detection/reactive-change-detector';
-import { Changes } from '../change-detection/observer';
+import { CustomElementPlugin, CustomHTMLElement } from '../custom-element';
+import { Dom } from '../dom/dom';
 
 export class ChangeDetectionPlugin extends CustomElementPlugin {
   static readonly root: ChangeDetector = new ReactiveChangeDetector();
@@ -20,7 +20,7 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
     const detector = ChangeDetector.getDetectorOf(element);
 
     this.updateChangeDetector(element, detector);
-    ChangeDetectionPlugin.attachInputWatchers(element, detector);
+    Dom.watchInputChanges(element, detector, getInputMetadata(element));
 
     detector.scheduleTreeCheck({ async: true });
   }
@@ -49,39 +49,6 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
     if (element.onBeforeCheck) {
       changeDetector.beforeCheck(() => element.onBeforeCheck());
     }
-  }
-
-  static attachInputWatchers(element: CustomHTMLElement, changeDetector: ChangeDetector) {
-    const inputs = getInputMetadata(element);
-    if (!inputs.length || !element.onChanges) {
-      return;
-    }
-
-    const inputNames = inputs.map((input) => input.property);
-    let changes: Changes;
-    let count: number;
-
-    changeDetector.beforeCheck(() => {
-      changes = {};
-      count = 0;
-    });
-
-    for (const input of inputNames) {
-      changeDetector.watch({
-        expression() {
-          return element[input];
-        },
-
-        callback(value, lastValue, firstTime) {
-          changes[input] = { value, lastValue, firstTime };
-          count++;
-        },
-      });
-    }
-
-    changeDetector.afterCheck(() => {
-      count && element.onChanges(changes);
-    });
   }
 
   protected updateChangeDetector(element: CustomHTMLElement, changeDetector: ChangeDetector) {

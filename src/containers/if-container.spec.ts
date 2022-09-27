@@ -1,11 +1,13 @@
 import { Bootstrap } from '../index';
-import { createHtml, wait } from '../testing';
+import { clearDom, createHtml, wait } from '../testing';
 
-describe('conditional template', () => {
-  fit('should add/remove an item from DOM based on a condition', async () => {
+describe('conditional template containr (if)', () => {
+  afterEach(() => clearDom());
+
+  it('should add/remove an item from DOM based on a condition', async () => {
     const condition = { value: false };
     const rootNode = createHtml(
-      `<template *if="this.condition.value" [else]="ola">
+      `<template container="if" [if]="this.condition.value" [else]="ola">
         <p>Hello!</p>
       </template>
       <template #ola><div>Ola!</div></div>`,

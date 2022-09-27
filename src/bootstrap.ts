@@ -1,12 +1,12 @@
 import { Injector, Provider, TreeInjector } from '@homebots/injector';
 import { ChangeDetector } from './change-detection/change-detection';
-import { ChangeDetectionPlugin } from './plugins/change-detection.plugin';
-import { CustomElement } from './custom-element';
 import { ForContainer } from './containers/for-container';
 import { IfContainer } from './containers/if-container';
 import { ContainerRegistry } from './containers/registry';
+import { CustomElement } from './custom-element';
 import { DomScanner } from './dom/dom-scanner';
 import { ExecutionContext } from './execution-context';
+import { ChangeDetectionPlugin } from './plugins/change-detection.plugin';
 import { ShadowDomToggle } from './settings';
 import { AddEventListenerRule } from './syntax/add-event-listener.rule';
 import { NodeReferenceRule } from './syntax/node-reference.rule';
@@ -14,7 +14,6 @@ import { SetAttributeRule } from './syntax/set-attribute.rule';
 import { SetClassRule } from './syntax/set-class.rule';
 import { SetPropertyRule } from './syntax/set-property.rule';
 import { SyntaxRules } from './syntax/syntax-rules';
-import { ViewContainerRule } from './syntax/view-container.rule';
 import { domReady } from './utils';
 
 export interface BootstrapOptions {
@@ -71,7 +70,6 @@ domReady().then(() => {
   const containerRegistry = injector.get(ContainerRegistry);
 
   syntaxRules.addRule(injector.get(NodeReferenceRule));
-  syntaxRules.addRule(injector.get(ViewContainerRule));
   syntaxRules.addRule(injector.get(SetPropertyRule));
   syntaxRules.addRule(injector.get(SetAttributeRule));
   syntaxRules.addRule(injector.get(SetClassRule));

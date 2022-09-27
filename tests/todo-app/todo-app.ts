@@ -26,7 +26,7 @@ export interface Task {
   ul { list-style: none; margin: 0; padding: 1rem }
   li { display: flex }
   li > span { flex-grow: 1 }
-  `
+  `,
 })
 export class TodoApp extends HTMLElement {
   tasks: Task[] = [];

@@ -1,9 +1,10 @@
-import { ChangeDetector } from '../change-detection/change-detection';
+import { ChangeDetector, OnChanges } from '../change-detection/change-detection';
 import { ExecutionContext } from '../execution-context';
 import { Inject } from '@homebots/injector';
 import { DomScanner } from '../dom/dom-scanner';
 import { setTimeoutNative } from '../utils';
 import { Changes } from '../change-detection/observer';
+import { Input } from 'src/component-decorators';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
@@ -12,15 +13,15 @@ interface ContainerChild {
   detached: boolean;
 }
 
-export class ForContainer {
+export class ForContainer implements OnChanges {
   @Inject() dom: DomScanner;
-  of: Iterable<any>;
-  for: string;
+  @Input() of: Iterable<any> | Array<any>;
+  @Input() for: string;
 
   private children: ContainerChild[] = [];
 
   constructor(
-    private template: HTMLTemplateElement & { anchor?: Comment },
+    private template: HTMLTemplateElement,
     private changeDetector: ChangeDetector,
     private executionContext: ExecutionContext,
   ) {}
@@ -52,7 +53,7 @@ export class ForContainer {
     this.prepareLocalsAndChildren(items, fragment);
     this.changeDetector.detectChanges();
 
-    setTimeoutNative(() => this.template.anchor.parentNode.appendChild(fragment));
+    setTimeoutNative(() => this.template.parentNode.appendChild(fragment));
   }
 
   private prepareLocalsAndChildren(items: any[], fragment) {

@@ -1,10 +1,10 @@
-import { Bootstrap } from '../../src/index';
-import { clearDom, createHtml, wait } from '../../src/testing';
+import { Bootstrap } from '../index';
+import { clearDom, createHtml, wait } from '../testing';
 
-describe('template containers (if/for)', () => {
+describe('repeatable template container (for)', () => {
   afterEach(() => clearDom());
 
-  fit('should repeat correctly the items in a template', async () => {
+  it('should repeat correctly the items in a template', async () => {
     const template = `
       <p>{{ this.items.length + ' items' }}</p>
       <ul>
@@ -30,6 +30,4 @@ describe('template containers (if/for)', () => {
     expect(rootNode.querySelectorAll('li').length).toBe(2);
     expect(rootNode.innerText.trim()).toContain('2 items');
   });
-
-
 });

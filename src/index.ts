@@ -27,7 +27,6 @@ export { SetAttributeRule } from './syntax/set-attribute.rule';
 export { SetClassRule } from './syntax/set-class.rule';
 export { SetPropertyRule } from './syntax/set-property.rule';
 export { SyntaxRules } from './syntax/syntax-rules';
-export { ViewContainerRule } from './syntax/view-container.rule';
 export { domReady, noop } from './utils';
 export { InjectorPlugin, ChangeDetectionPlugin, TemplatePlugin, TemplateRef };
 

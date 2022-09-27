@@ -31,7 +31,12 @@ export class SetPropertyRule implements SyntaxRule {
         return executionContext.run(expression);
       },
       callback(value: any) {
-        Dom.setProperty(element, transformedProperty, value);
+        if (Dom.isTemplateNode(element) && element.proxy) {
+          element.proxy[property] = value;
+          return;
+        }
+
+        element[transformedProperty] = value;
       },
     });
   }

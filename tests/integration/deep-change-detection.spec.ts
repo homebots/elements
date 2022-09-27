@@ -7,10 +7,9 @@ describe('change detector in multiple levels', () => {
     const values = {};
 
     class TestComponent extends HTMLElement {
-      uid = 1;
+      @Input() uid = 1;
 
-      onChanges(changes) {
-        console.log('onchanges', changes.get('uid'), this.nodeName, this.uid);
+      onChanges() {
         values[this.nodeName] = this.uid;
       }
     }
@@ -50,6 +49,6 @@ describe('change detector in multiple levels', () => {
     await app.check();
     await wait(10);
 
-    console.log(values);
+    expect(values).toEqual({ 'X-APP': 10, 'X-OUTER': 11, 'X-INNER': 12 });
   });
 });
