@@ -15,7 +15,7 @@ export interface ChangeDetector extends IObserver {
   children?: ChangeDetector[];
 
   scheduleCheck(options?: CheckOptions): void;
-  detectChanges(): Promise<void> | void;
+  detectChanges(options?: CheckOptions): Promise<void> | void;
   detach(): void;
   adopt(cd: ChangeDetector): void;
   fork(): ChangeDetector;

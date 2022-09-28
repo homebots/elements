@@ -1,12 +1,15 @@
 import { Injector } from '@homebots/injector';
-import { getInputMetadata } from '../inputs';
 import { ChangeDetector } from '../change-detection/change-detection';
-import { ReactiveChangeDetector } from '../change-detection/reactive-change-detector';
 import { CustomElementPlugin, CustomHTMLElement } from '../custom-element';
 import { Dom } from '../dom/dom';
+import { getInputMetadata } from '../inputs';
+
+let root: ChangeDetector;
 
 export class ChangeDetectionPlugin extends CustomElementPlugin {
-  static readonly root: ChangeDetector = new ReactiveChangeDetector();
+  static get root(): ChangeDetector {
+    return root || (root = Injector.global.get(ChangeDetector));
+  }
 
   onBeforeInit(element: CustomHTMLElement) {
     const detector = ChangeDetector.getDetectorOf(element);
@@ -22,8 +25,7 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
     this.updateChangeDetector(element, detector);
     Dom.watchInputChanges(element, detector, getInputMetadata(element));
 
-    // detector.scheduleCheck({ async: true });
-    detector.detectChanges();
+    detector.detectChanges({ async: true });
   }
 
   onDestroy(element: CustomHTMLElement): void {
@@ -59,7 +61,5 @@ export class ChangeDetectionPlugin extends CustomElementPlugin {
       changeDetector.detach();
       parent.adopt(changeDetector);
     }
-
-    changeDetector.markAsDirty();
   }
 }
