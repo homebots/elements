@@ -62,4 +62,13 @@ export class Dom {
       count && (element as HTMLElement & OnChanges).onChanges(changes);
     });
   }
+
+  static normalizeTemplate(template: HTMLTemplateElement) {
+    const fn = (child: Node) => {
+      child.normalize();
+      child.childNodes.forEach(fn);
+    }
+
+    fn(template.content);
+  }
 }

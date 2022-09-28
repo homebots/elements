@@ -1,6 +1,7 @@
 import { Inject } from '@homebots/injector';
 import { ChangeDetector, OnChanges } from '../change-detection/change-detection';
 import { Input } from '../component-decorators';
+import { Dom } from '../dom/dom';
 import { DomScanner } from '../dom/dom-scanner';
 import { ExecutionContext } from '../execution-context';
 import { setTimeoutNative } from '../utils';
@@ -18,7 +19,9 @@ export class IfContainer implements OnChanges {
     private template: HTMLTemplateElement,
     private changeDetector: ChangeDetector,
     private executionContext: ExecutionContext,
-  ) {}
+  ) {
+    Dom.normalizeTemplate(template);
+  }
 
   private nodes: Node[] = [];
   private state: 0 | 1 | 2;
@@ -46,14 +49,13 @@ export class IfContainer implements OnChanges {
     const templateNodes = Array.from(template.content.childNodes);
     const fragment = document.createDocumentFragment();
     const nodes = templateNodes.map((n) => n.cloneNode(true));
-    const changeDetector = this.changeDetector.parent;
+    const changeDetector = this.changeDetector;
 
     fragment.append(...nodes);
     nodes.forEach((node) => this.dom.scanTree(node as HTMLElement, changeDetector, this.executionContext));
 
-    this.changeDetector.detectChanges();
-
     setTimeoutNative(() => {
+      this.changeDetector.detectChanges();
       template.parentNode.insertBefore(fragment, this.template);
       this.removeOldNodes();
       this.nodes = nodes;

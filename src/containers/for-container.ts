@@ -1,10 +1,11 @@
-import { ChangeDetector, OnChanges } from '../change-detection/change-detection';
-import { ExecutionContext } from '../execution-context';
 import { Inject } from '@homebots/injector';
-import { DomScanner } from '../dom/dom-scanner';
-import { setTimeoutNative } from '../utils';
-import { Changes } from '../change-detection/observer';
 import { Input } from 'src/component-decorators';
+import { ChangeDetector, OnChanges } from '../change-detection/change-detection';
+import { Changes } from '../change-detection/observer';
+import { Dom } from '../dom/dom';
+import { DomScanner } from '../dom/dom-scanner';
+import { ExecutionContext } from '../execution-context';
+import { setTimeoutNative } from '../utils';
 
 interface ContainerChild {
   executionContext: ExecutionContext;
@@ -19,22 +20,17 @@ export class ForContainer implements OnChanges {
   @Input() for: string;
 
   private children: ContainerChild[] = [];
+  private templateNodes: Node[];
 
   constructor(
     private template: HTMLTemplateElement,
     private changeDetector: ChangeDetector,
     private executionContext: ExecutionContext,
-  ) {}
-
-  _templateNodes: Node[];
-
-  get templateNodes() {
-    if (!this._templateNodes) {
-      this._templateNodes = Array.from(this.template.content.children);
-    }
-
-    return this._templateNodes;
+  ) {
+    Dom.normalizeTemplate(template);
+    this.templateNodes = Array.from(template.content.childNodes);
   }
+
 
   onChanges(changes: Changes) {
     if (!this.of || !this.for) {
@@ -63,6 +59,7 @@ export class ForContainer implements OnChanges {
 
       locals[this.for] = item;
       locals.index = index;
+      locals.odd = index % 2 === 1;
 
       child.executionContext.addLocals(locals);
 
@@ -88,11 +85,17 @@ export class ForContainer implements OnChanges {
   }
 
   private resetExecutionContext() {
-    this.children.forEach((node) => node.executionContext.reset());
+    for (const node of this.children) {
+      node.executionContext.reset();
+    }
   }
 
   private compileChild(child: ContainerChild) {
-    child.nodes.forEach((node) => this.dom.scanTree(node as HTMLElement, child.changeDetector, child.executionContext));
+    const nodes = Array.from(child.nodes);
+
+    for (const node of nodes) {
+      this.dom.scanTree(node as HTMLElement, child.changeDetector, child.executionContext);
+    }
   }
 
   private createChild(): ContainerChild {
@@ -102,7 +105,7 @@ export class ForContainer implements OnChanges {
       nodes,
       detached: true,
       executionContext: this.executionContext.fork(),
-      changeDetector: this.changeDetector.parent,
+      changeDetector: this.changeDetector.fork(),
     };
   }
 

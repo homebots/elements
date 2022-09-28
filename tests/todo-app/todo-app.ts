@@ -13,6 +13,7 @@ export interface Task {
       <input #newtask (input) />
       <button type="submit" [disabled]="!newtask.value">add</button>
     </form>
+    <template *if="!this.tasks.length">No tasks</template>
     <template *if="this.tasks.length">
       <ul>
         <template *for [for]="'task'" [of]="this.tasks">

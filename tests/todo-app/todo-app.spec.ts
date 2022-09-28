@@ -55,9 +55,10 @@ describe('todo app', () => {
   }
 
   it('shows a list of tasks', async () => {
-    const { interactor } = await setup();
+    const { interactor, element } = await setup();
     await interactor.whenReady();
 
+    expect(element.textContent?.includes('No tasks')).toBe(true);
     expect(customElements.get('todo-app')).not.toBe(undefined);
     expect(interactor.okButton?.disabled).toBe(true);
 
@@ -67,5 +68,7 @@ describe('todo app', () => {
 
     await interactor.removeTask('Task 2');
     expect(interactor.taskNames).toEqual(['Task 1']);
+
+    expect(element.textContent?.includes('No tasks')).toBe(false);
   });
 });
