@@ -30,14 +30,15 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
     }
   }
 
-  detectChanges(options?: CheckOptions): Promise<void> | void {
+  detectChanges(options: CheckOptions = { async: true }): Promise<void> | void {
     this.markAsDirty();
     return this.scheduleCheck(options);
   }
 
   check() {
     super.check();
-    this.children.forEach((cd) => cd.check());
+
+    for (const cd of this.children) cd.check();
   }
 
   scheduleCheck(options?: CheckOptions) {
