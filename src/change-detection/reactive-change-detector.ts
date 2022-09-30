@@ -52,7 +52,7 @@ export class ReactiveChangeDetector extends Observer implements ChangeDetector {
     }
 
     if (this.timer) {
-      clearTimeout(this.timer);
+      return;
     }
 
     return new Promise<void>((resolve) => {
