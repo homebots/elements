@@ -1,13 +1,13 @@
 import { inject } from '@homebots/injector';
 import { clearDom, createHtml } from '../testing';
 import { DomScanner } from './dom-scanner';
-import { ReactiveChangeDetector } from '../change-detection/reactive-change-detector';
+import { ChangeDetectorTree } from '../change-detection/change-detector-tree';
 import { ExecutionContext } from '../execution-context';
 
 describe('DomScanner', () => {
   afterEach(() => clearDom());
 
-  it('should scan an element and its descendants', () => {
+  it('should scan an element and its descendants', async () => {
     const node = createHtml(`
     <p [title]="testTitle" @dir="'rtl'">
       <span>{{ text }}</span>
@@ -17,7 +17,7 @@ describe('DomScanner', () => {
     </p>`);
 
     const context = new ExecutionContext();
-    const cd = new ReactiveChangeDetector();
+    const cd = new ChangeDetectorTree();
 
     context.addLocals({
       testTitle: 'test',
@@ -27,21 +27,21 @@ describe('DomScanner', () => {
     const scanner = inject(DomScanner);
 
     scanner.scanTree(node, cd, context);
-    cd.detectChanges();
+    await cd.detectChanges();
 
     expect(node.querySelector('p').title).toBe('test');
     expect(node.querySelector('p').dir).toBe('rtl');
     expect(node.querySelector('span').textContent).toBe('just text');
   });
 
-  it('should replace text markers in a text node with data binding tags', () => {
+  it('should replace text markers in a text node with data binding tags', async () => {
     const node = createHtml('You say {{ youSay }} and I say {{ iSay }}');
     const context = new ExecutionContext();
-    const cd = new ReactiveChangeDetector();
+    const cd = new ChangeDetectorTree();
     context.addLocals({ youSay: 'goodbye', iSay: 'hello' });
 
     inject(DomScanner).scanTree(node, cd, context);
-    cd.detectChanges();
+    await cd.detectChanges();
 
     expect(node.textContent.trim()).toBe('You say goodbye and I say hello');
   });

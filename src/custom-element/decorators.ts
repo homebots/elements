@@ -1,12 +1,15 @@
 /// <reference types="reflect-metadata" />
 
-import { DomEventEmitter, Emitter } from './events';
-import { ComponentOptions, CustomElement } from './custom-element';
-import { InputOptions, INPUTS_METADATA, InputWatcher } from './inputs';
-import { domReady } from './utils';
+import { defaults } from './custom-element';
+import { CustomHTMLElement, CustomElementOptions } from './types';
+
+// import { DomEventEmitter, Emitter } from './events';
+// import { ComponentOptions, CustomElement } from './custom-element/custom-element';
+// import { InputOptions, INPUTS_METADATA, InputWatcher } from './inputs';
+// import { domReady } from './utils';
 
 export function Child(selector: string, isStatic?: boolean) {
-  return (target: any, property: string) => {
+  return (target: HTMLElement, property: string) => {
     let node: HTMLElement;
 
     Object.defineProperty(target, property, {
@@ -19,7 +22,7 @@ export function Child(selector: string, isStatic?: boolean) {
 }
 
 export function Children(selector: string) {
-  return (target: any, property: string) => {
+  return (target: HTMLElement, property: string) => {
     Object.defineProperty(target, property, {
       get() {
         return (this.shadowRoot || this).querySelectorAll(selector);
@@ -28,12 +31,13 @@ export function Children(selector: string) {
   };
 }
 
-export function Component(options: ComponentOptions) {
+export function Component<T extends CustomElementOptions>(options: T) {
   return function (ComponentClass: typeof HTMLElement) {
-    domReady().then(() => CustomElement.define(ComponentClass, options));
+    defaults.define(ComponentClass, options);
   };
 }
 
+/*
 export function Output(eventName: string) {
   return function (target: any, property: string) {
     // NOTE: DOM event names are always lower case
@@ -61,3 +65,4 @@ export function Input(options: InputOptions = { useEquals: false }) {
     Reflect.defineMetadata(INPUTS_METADATA, inputs, target);
   };
 }
+*/

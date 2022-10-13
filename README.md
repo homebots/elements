@@ -11,12 +11,8 @@ Every custome element can implement one of the following hooks: `OnInit`, `OnDes
 
 ## Change detection
 
-Every instance has its own change detection context, but when a component changes something, the
-change detection looks at all observed properties in that context and all children, starting from the root element.
-
-This is to ensure that changes that affect the parent elements can also be checked.
-
-> As an alternative, change detection (via [Zone.js](https://www.npmjs.com/package/zone.js)) can be used as well.
+Every instance has its own change detection instance.
+Syntax rules, like property bindings or events, can cause side effects, which are observed inside a custom element instance.
 
 ## Examples
 

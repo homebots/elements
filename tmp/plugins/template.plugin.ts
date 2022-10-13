@@ -1,6 +1,6 @@
 import { Injector } from '@homebots/injector';
 import { ChangeDetector } from '../change-detection/change-detection';
-import { ComponentOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element';
+import { ComponentOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element/custom-element';
 import { ExecutionContext } from '../execution-context';
 import { Dom } from '../dom/dom';
 import { DomScanner } from '../dom/dom-scanner';

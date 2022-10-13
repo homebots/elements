@@ -1,6 +1,6 @@
 import { Injector } from '@homebots/injector';
 import { ChangeDetector } from '../change-detection/change-detection';
-import { CustomElementPlugin, CustomHTMLElement } from '../custom-element';
+import { CustomElementPlugin, CustomHTMLElement } from '../custom-element/custom-element';
 import { Dom } from '../dom/dom';
 import { getInputMetadata } from '../inputs';
 

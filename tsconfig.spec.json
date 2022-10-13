@@ -9,6 +9,5 @@
     "noEmitOnError": true,
     "types": ["jasmine"]
   },
-  "exclude": ["node_modules/**"],
   "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

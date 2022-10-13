@@ -1,4 +1,4 @@
-import { Component } from '../../src/index';
+import { Component } from '../../../src/index';
 
 export interface Task {
   done: boolean;

@@ -1,39 +1,39 @@
-import { Child, Children, Component, CustomElement, DomEventEmitter, domReady, Input, Output } from '.';
-import { INPUTS_METADATA } from './inputs';
+import { Child, Children, Component } from '..';
+import { defaults } from './custom-element';
 
 describe('decorators', () => {
   it('should have decorators to find child nodes inside a component', () => {
-    class ChildAndChildrenOfElement {
-      @Child('.child') child;
-      @Children('.children') children;
+    class ChildAndChildrenOfElement extends HTMLElement {
+      @Child('.child') childNode: Node;
+      @Children('.children') childNodeList: Node[];
 
       querySelector = jasmine.createSpy('').and.returnValue(null);
       querySelectorAll = jasmine.createSpy('').and.returnValue(null);
     }
 
-    const children = new ChildAndChildrenOfElement();
+    const tagName = 'child-children';
 
-    expect(children.child).toBeNull();
-    expect(children.children).toBeNull();
+    defaults.define(ChildAndChildrenOfElement, { tag: tagName });
+    const children = defaults.createElement(ChildAndChildrenOfElement);
+
+    expect(children.childNode).toBeNull();
+    expect(children.childNodeList).toBeNull();
     expect(children.querySelector).toHaveBeenCalledWith('.child');
     expect(children.querySelectorAll).toHaveBeenCalledWith('.children');
   });
 
   it('should have decorator to create a component', async () => {
     expect(typeof Component === 'function').toBe(true);
-    const spy = spyOn(CustomElement, 'define').and.callThrough();
     const tagName = `x-test${Math.random()}`;
 
     @Component({ template: `<span>test</span>`, tag: tagName })
     class TestComponent extends HTMLElement {}
 
-    await domReady();
-
     expect(typeof TestComponent).toBe('function');
-    expect(spy).toHaveBeenCalled();
+    expect(customElements.get(tagName)).not.toBeFalsy();
   });
 
-  it('should have decorators for inputs and outputs', () => {
+  /*it('should have decorators for inputs and outputs', () => {
     class InputOutput {
       @Input() input: string;
       @Output('text') ontext: DomEventEmitter<string>;
@@ -44,5 +44,5 @@ describe('decorators', () => {
 
     expect(meta).toEqual([{ property: 'input', options: { useEquals: false } }]);
     expect(el.ontext instanceof DomEventEmitter).toBe(true);
-  });
+  });*/
 });
