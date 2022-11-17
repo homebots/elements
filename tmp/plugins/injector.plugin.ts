@@ -1,9 +1,14 @@
-import { TreeInjector as Injector } from '@homebots/injector';
-import { ComponentOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element/custom-element';
+import { Provider, TreeInjector as Injector } from '@homebots/injector';
+import { CustomElementOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element/custom-element';
 import { ShadowDomToggle } from '../settings';
 
+interface InjectorOptions extends CustomElementOptions {
+  providers?: Provider[];
+  parentInjector?: Injector;
+}
+
 export class InjectorPlugin extends CustomElementPlugin {
-  onCreate(component: CustomHTMLElement, options: ComponentOptions) {
+  onCreate(component: CustomHTMLElement, options: InjectorOptions) {
     let injector = Injector.getInjectorOf(component);
 
     if (!injector) {
@@ -21,7 +26,7 @@ export class InjectorPlugin extends CustomElementPlugin {
     }
   }
 
-  protected findParentInjector(component: CustomHTMLElement, options: ComponentOptions) {
+  protected findParentInjector(component: CustomHTMLElement, options: CustomElementOptions) {
     return (
       options.parentInjector ||
       (component.parentComponent && Injector.getInjectorOf(component.parentComponent)) ||

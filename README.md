@@ -1,13 +1,28 @@
 # Elements
 
-This is a microframework that tries to use the latest API's from HTML, Javascript and CSS to run web apps.
+This is a library that embraces the latest browser API's to run web apps.
 
-Using [Custom elements](https://developers.google.com/web/fundamentals/web-components/customelements) and a few other
+Some key points this library will always follow:
+
+- Always use the native solution whenever possible.
+- Everything should be open for extension, via plugins
+- No custom API's that deviate too much from the web platform
+- As little abstraction as possible
+
+## But what are custom elements?
+
+[Custom elements](https://developers.google.com/web/fundamentals/web-components/customelements) are part of the Web Components API and allow JS code to define customised HTML tag names.
+
+A custom element has a few callbacks that are invoked when an element is attached to the DOM or removed from it.
+
+So this library takes care of hooking up these callbacks to a plugin system, and any features you might want to use can be implemented as such
+
+
 features, like [dependency injection](https://github.com/homebots/injector), change detection and lifecycle hooks.
 
 ## Lifecycle hooks
 
-Every custome element can implement one of the following hooks: `OnInit`, `OnDestroy`, `onChanges`, `OnBeforeCheck`
+Every custom element can implement custom hooks, like `OnInit`, `OnDestroy`, `onChanges` and so on.
 
 ## Change detection
 

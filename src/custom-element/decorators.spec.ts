@@ -1,5 +1,4 @@
-import { Child, Children, Component } from '..';
-import { defaults } from './custom-element';
+import { Child, Children, Component, define, createElement } from '..';
 
 describe('decorators', () => {
   it('should have decorators to find child nodes inside a component', () => {
@@ -11,10 +10,10 @@ describe('decorators', () => {
       querySelectorAll = jasmine.createSpy('').and.returnValue(null);
     }
 
-    const tagName = 'child-children';
+    const tagName = 'test-childandchildren';
 
-    defaults.define(ChildAndChildrenOfElement, { tag: tagName });
-    const children = defaults.createElement(ChildAndChildrenOfElement);
+    define(ChildAndChildrenOfElement, { tag: tagName });
+    const children = createElement(ChildAndChildrenOfElement);
 
     expect(children.childNode).toBeNull();
     expect(children.childNodeList).toBeNull();

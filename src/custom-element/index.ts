@@ -1,10 +1,9 @@
-export { CustomElement } from './custom-element';
+export { CustomElement, using, create, define, createElement, customElements } from './custom-element';
 export {
   CustomElementOptions,
-  Composition,
+  CustomElementPlugin,
   CustomHTMLElement,
   LifecycleHook,
-  isCustomElement as customElementsTag,
 } from './types';
 export { Child, Children, Component } from './decorators';
 /*Input, Output*/

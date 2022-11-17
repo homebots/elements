@@ -1,6 +1,6 @@
 import { Injector } from '@homebots/injector';
 import { ChangeDetector } from '../change-detection/change-detection';
-import { ComponentOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element/custom-element';
+import { CustomElementOptions, CustomElementPlugin, CustomHTMLElement } from '../custom-element/custom-element';
 import { ExecutionContext } from '../execution-context';
 import { Dom } from '../dom/dom';
 import { DomScanner } from '../dom/dom-scanner';
@@ -9,6 +9,12 @@ const defaultShadowDomOptions: ShadowRootInit = { mode: 'open' };
 
 export const TemplateRef = Symbol('TemplateRef');
 export const ChildrenRef = Symbol('Children');
+
+export interface TemplateOptions extends CustomElementOptions {
+  template?: string;
+  styles?: string;
+  shadowDom?: boolean | ShadowRootInit;
+}
 
 export class TemplatePlugin extends CustomElementPlugin {
   onCreate(element: CustomHTMLElement, options: ComponentOptions): void {

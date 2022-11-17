@@ -1,7 +1,7 @@
 /// <reference types="reflect-metadata" />
 
-import { defaults } from './custom-element';
-import { CustomHTMLElement, CustomElementOptions } from './types';
+import { customElements } from './custom-element';
+import { CustomElementOptions } from './types';
 
 // import { DomEventEmitter, Emitter } from './events';
 // import { ComponentOptions, CustomElement } from './custom-element/custom-element';
@@ -33,7 +33,7 @@ export function Children(selector: string) {
 
 export function Component<T extends CustomElementOptions>(options: T) {
   return function (ComponentClass: typeof HTMLElement) {
-    defaults.define(ComponentClass, options);
+    customElements.define(ComponentClass, options);
   };
 }
 
